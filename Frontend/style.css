@@ -1,0 +1,20 @@
+* {
+  margin: 0%;
+  padding: 0%;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  background-color: #151515;
+}
+
+.mouse-follower {
+  height: 30px;
+  width: 30px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+}
