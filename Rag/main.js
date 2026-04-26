@@ -7,7 +7,7 @@ import fs from 'fs';
 dotenv.config();
 
 const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-const index = pc.index("cohort-2-rag")
+const index = pc.index({ name: "cohort-2-rag" })
 
 // let dataBuffer = fs.readFileSync('./story.pdf');
 

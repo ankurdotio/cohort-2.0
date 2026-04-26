@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@langchain/core": "^1.1.35",
+    "@langchain/google-genai": "^2.1.28",
     "@langchain/mistralai": "^1.0.7",
     "@langchain/textsplitters": "^1.0.1",
     "@pinecone-database/pinecone": "^7.1.0",
