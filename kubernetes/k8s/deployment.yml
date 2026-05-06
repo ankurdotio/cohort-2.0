@@ -3,25 +3,28 @@ kind: Deployment
 metadata:
   name: express-deployment
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
-      app: express
+      app: main-server
   template:
     metadata:
       labels:
-        app: express
+        app: main-server
     spec:
       containers:
-      - name: express-container
-        image: cohort_2_express:latest
+      - name: main-server
+        image: express_cohort_2:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
         resources:
           limits:
-            memory: "128Mi"
-            cpu: "500m"
+            memory: "128Mi" # RAM 128 megabytes
+            cpu: "500m" # CPU 500 millicores (0.5 CPU core)
+            # 1 core = 1000m (1000 millicores)
           requests:
-            memory: "64Mi"
-            cpu: "250m"
+            memory: "64Mi" # RAM 64 megabytes
+            cpu: "250m" # CPU 250 millicores (0.25 CPU core)
+
+

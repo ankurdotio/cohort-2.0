@@ -1,12 +1,12 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name:  express-service
+  name:  main-server-service
 spec:
   selector:
-    app:  express
-  type:  ClusterIP
+    app:  main-server
+  type: ClusterIP
   ports:
-  - name:  http
+  - name:  name-of-the-port
     port:  80
     targetPort:  3000

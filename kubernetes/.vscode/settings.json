@@ -1,0 +1,8 @@
+{
+    "yaml.schemas": {
+        "/Users/ankurprajapati/.vscode/extensions/continue.continue-1.0.10-darwin-arm64/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ],
+        "https://www.artillery.io/schema.json": []
+    }
+}
