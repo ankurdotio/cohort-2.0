@@ -23,6 +23,13 @@ build:
       infer:
         - "src/**"
         
+  - image: notification
+    context: notification
+    docker:
+      dockerfile: dockerfile
+    sync:
+      infer:
+        - "src/**"      
 
   - image: agent
     context: sandbox/agent
@@ -57,3 +64,5 @@ manifests:
     - k8s/router-service.yml
     - k8s/rbac.yml
     - k8s/secrets.yml
+    - k8s/notification-deployment.yml
+    - k8s/notification-service.yml
