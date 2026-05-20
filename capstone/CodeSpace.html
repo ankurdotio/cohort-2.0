@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>codeSpace — Engineering Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:ital,wght@0,300;0,600;0,700;0,900;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:       #0E0F14;
+  --paper:     #F5F2EB;
+  --paper2:    #EDE9DF;
+  --paper3:    #E4DFD3;
+  --rule:      #D4CEBC;
+  --muted:     #6B6455;
+  --accent:    #C84B1F;
+  --accent2:   #1A6B4A;
+  --accent3:   #1B4587;
+  --gold:      #B8860B;
+  --code-bg:   #1A1C24;
+  --code-text: #E2DCCC;
+  --flag-c:    #5BA4CF;
+  --val-c:     #F4A261;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14.5px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.layout { display: flex; min-height: 100vh; }
+
+/* ─── Sidebar ─────────────────────────────────────── */
+nav {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--ink);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 32px 0 40px;
+}
+
+.nav-brand { padding: 0 24px 28px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px; }
+.nav-brand .logo {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 4px;
+}
+.nav-brand .logo span { color: var(--accent); }
+.nav-brand .sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.06em;
+}
+
+.nav-group-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 16px 24px 8px;
+}
+
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 24px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.5);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+nav a:hover { color: white; background: rgba(255,255,255,0.04); }
+nav a.active { color: white; border-left-color: var(--accent); background: rgba(200,75,31,0.08); }
+nav a:hover .nav-num, nav a.active .nav-num { background: var(--accent); color: white; }
+
+.nav-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  transition: all 0.15s ease;
+}
+
+/* ─── Main ────────────────────────────────────────── */
+main {
+  flex: 1;
+  max-width: calc(99% - 256px);
+  padding: 56px 56px 80px;
+}
+
+/* ─── Hero ────────────────────────────────────────── */
+.hero { margin-bottom: 64px; padding-bottom: 40px; border-bottom: 1px solid var(--rule); }
+.hero-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(36px, 5vw, 58px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+.hero h1 em { font-style: italic; color: var(--accent); font-weight: 900; }
+.hero-desc {
+  font-size: 16px;
+  color: var(--muted);
+  max-width: 620px;
+  line-height: 1.65;
+  margin-bottom: 24px;
+}
+.hero-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.hero-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* ─── Section ─────────────────────────────────────── */
+.section {
+  margin-bottom: 72px;
+  animation: fadeUp 0.4s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.section-num-big {
+  font-family: 'Fraunces', serif;
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--rule);
+  user-select: none;
+  line-height: 1;
+}
+.section-title-block { flex: 1; }
+.section-title {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.section-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 28px 0 12px;
+}
+h4 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 20px 0 10px;
+}
+p { color: #2A2720; margin-bottom: 12px; }
+strong { font-weight: 500; color: var(--ink); }
+
+code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--paper3);
+  border: 1px solid var(--rule);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+ul, ol { margin: 0 0 12px 22px; }
+li { color: #2A2720; margin-bottom: 6px; }
+
+/* ─── Components ──────────────────────────────────── */
+.concept {
+  background: var(--paper2);
+  border-left: 3px solid var(--accent3);
+  border-radius: 0 8px 8px 0;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.concept-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--accent3);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+}
+.concept p { font-size: 14px; line-height: 1.65; color: var(--ink); margin: 0; }
+
+.note {
+  background: #FEF9EC;
+  border: 1px solid #EDD97A;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.note .note-icon { font-size: 16px; flex-shrink: 0; }
+.note p { color: #5C4A00; font-size: 13px; margin: 0; line-height: 1.6; }
+.note strong { color: #3D3000; }
+
+.warn {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.warn .note-icon { font-size: 16px; flex-shrink: 0; }
+.warn p { color: #7F1D1D; font-size: 13px; margin: 0; line-height: 1.6; }
+.warn strong { color: #5C0F0F; }
+
+.step-label {
+  display: inline-block;
+  background: var(--accent);
+  color: white;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin: 16px 0 8px;
+}
+.step-label.green { background: var(--accent2); }
+.step-label.blue { background: var(--accent3); }
+.step-label.gold { background: var(--gold); }
+
+/* ─── Code block ──────────────────────────────────── */
+.code-wrap {
+  background: var(--code-bg);
+  border-radius: 8px;
+  margin: 16px 0;
+  overflow: hidden;
+}
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.code-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.copy-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: all 0.15s ease;
+}
+.copy-btn:hover { color: white; border-color: rgba(255,255,255,0.4); }
+pre {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  color: var(--code-text);
+  padding: 16px;
+  overflow-x: auto;
+  line-height: 1.6;
+  white-space: pre;
+}
+.c-cmd { color: #87CEEB; font-weight: 600; }
+.c-flag { color: var(--flag-c); }
+.c-val { color: var(--val-c); }
+.c-str { color: #98C379; }
+.c-comment { color: rgba(255,255,255,0.28); font-style: italic; }
+.c-key { color: #C678DD; }
+.c-pipe { color: #E5C07B; }
+
+/* ─── Tables ──────────────────────────────────────── */
+.flag-table, .compare {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.flag-table th {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--paper3);
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 500;
+}
+.flag-table td { padding: 10px 14px; border-top: 1px solid var(--rule); vertical-align: top; }
+.flag-table tbody tr:hover { background: var(--paper2); }
+.f-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--flag-c); }
+.f-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--val-c); }
+.f-desc { font-size: 13px; color: var(--ink); }
+.f-why { font-size: 12px; color: var(--muted); }
+
+.compare th {
+  background: var(--ink);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 14px;
+  text-align: left;
+}
+.compare th:first-child { border-top-left-radius: 6px; }
+.compare th:last-child { border-top-right-radius: 6px; }
+.compare td { padding: 12px 14px; border-top: 1px solid var(--rule); font-size: 13px; }
+.compare .row-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.compare .local-val { color: var(--muted); }
+.compare .eks-val { color: var(--accent2); font-weight: 500; }
+
+/* ─── Flow diagram ────────────────────────────────── */
+.flow { margin: 16px 0; }
+.flow-step { display: flex; gap: 16px; min-height: 56px; }
+.flow-line { display: flex; flex-direction: column; align-items: center; padding-top: 6px; }
+.flow-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+.flow-connector { width: 2px; flex: 1; background: var(--rule); margin-top: 4px; }
+.flow-content { padding-bottom: 16px; flex: 1; }
+.flow-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.flow-detail { font-size: 12.5px; color: var(--muted); }
+
+/* ─── Scale diagram ───────────────────────────────── */
+.scale-diagram {
+  background: var(--paper2);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 2;
+  color: var(--muted);
+  margin: 16px 0;
+}
+.scale-diagram .hi { color: var(--ink); font-weight: bold; }
+.scale-diagram .green { color: var(--accent2); }
+.scale-diagram .red { color: var(--accent); }
+
+/* ─── Divider ─────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 40px 0;
+}
+
+/* ─── Footer ──────────────────────────────────────── */
+footer {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 2px solid var(--rule);
+  padding-top: 24px;
+  margin-top: 60px;
+}
+
+/* ─── Mobile ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  nav { display: none; }
+  main { padding: 32px 24px 60px; max-width: 100%; }
+  .hero h1 { font-size: 32px; }
+  footer { flex-direction: column; gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<nav>
+  <div class="nav-brand">
+    <div class="logo">Code<span>Space</span></div>
+    <div class="sub">Engineering Documentation</div>
+  </div>
+
+  <div class="nav-group-label">Introduction</div>
+  <a href="#summary"><span class="nav-num">1</span>Executive summary</a>
+  <a href="#architecture"><span class="nav-num">2</span>Architecture</a>
+
+  <div class="nav-group-label">Services</div>
+  <a href="#services"><span class="nav-num">3</span>Microservices</a>
+  <a href="#lifecycle"><span class="nav-num">4</span>Sandbox lifecycle</a>
+  <a href="#ai"><span class="nav-num">5</span>AI editing layer</a>
+
+  <div class="nav-group-label">Reference</div>
+  <a href="#data"><span class="nav-num">6</span>Data &amp; schemas</a>
+  <a href="#cluster"><span class="nav-num">7</span>Cluster design</a>
+  <a href="#setup"><span class="nav-num">8</span>Local setup</a>
+  <a href="#env"><span class="nav-num">9</span>Environment vars</a>
+  <a href="#api"><span class="nav-num">10</span>API reference</a>
+
+  <div class="nav-group-label">Operations</div>
+  <a href="#cicd"><span class="nav-num">11</span>CI/CD pipeline</a>
+  <a href="#security"><span class="nav-num">12</span>Security</a>
+  <a href="#observability"><span class="nav-num">13</span>Observability</a>
+
+  <div class="nav-group-label">Project</div>
+  <a href="#roadmap"><span class="nav-num">14</span>Roadmap &amp; limits</a>
+  <a href="#contributing"><span class="nav-num">15</span>Contributing</a>
+  <a href="#license"><span class="nav-num">16</span>License</a>
+</nav>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main>
+
+<!-- ─── HERO ─── -->
+<section class="hero">
+  <div class="hero-eyebrow">Engineering · v0.1</div>
+  <h1>An <em>AI-powered</em> cloud<br>sandbox IDE</h1>
+  <p class="hero-desc">
+    codeSpace provisions isolated React + Vite sandboxes inside Kubernetes on demand. Each sandbox ships with a live preview, an integrated terminal, and a Mistral-powered AI agent that reads and writes files directly in the running pod — hot-reloading instantly through Vite's HMR.
+  </p>
+  <div class="hero-tags">
+    <span class="hero-tag">Node.js 20</span>
+    <span class="hero-tag">React 19</span>
+    <span class="hero-tag">Kubernetes 1.28+</span>
+    <span class="hero-tag">MongoDB Atlas</span>
+    <span class="hero-tag">Redis</span>
+    <span class="hero-tag">RabbitMQ</span>
+    <span class="hero-tag">MistralAI</span>
+    <span class="hero-tag">LangGraph</span>
+  </div>
+</section>
+
+<!-- ─── 01 SUMMARY ─── -->
+<section class="section" id="summary">
+  <div class="section-header">
+    <div class="section-num-big">01</div>
+    <div class="section-title-block">
+      <div class="section-title">Executive summary</div>
+      <div class="section-subtitle">What it is, who it's for, and what makes it different</div>
+    </div>
+  </div>
+
+  <p>
+    codeSpace is a browser-based cloud IDE that spins up isolated, per-user React + Vite environments on demand inside a Kubernetes cluster. Each sandbox runs as a dedicated pod pre-loaded with a starter template. Users interact with a VS Code-style UI that includes a live preview pane, a file explorer, an integrated terminal, and an AI chat panel powered by Mistral Large via LangChain/LangGraph.
+  </p>
+
+  <p>
+    The AI agent reads, creates, and updates files directly inside the running pod in real time, triggering Vite's HMR so changes appear instantly in the preview without a full reload.
+  </p>
+
+  <div class="concept">
+    <div class="concept-label">Core value proposition</div>
+    <p>Spin up a production-quality React sandbox in one click, describe what you want to build in plain English, and watch the AI write and hot-reload the code while you observe it live in the same browser tab.</p>
+  </div>
+
+  <h3>Target users</h3>
+  <ul>
+    <li><strong>Frontend developers</strong> who want a zero-setup coding environment</li>
+    <li><strong>Students &amp; learners</strong> exploring React without local toolchain pain</li>
+    <li><strong>Educators</strong> running classes where each student needs a working sandbox in seconds</li>
+  </ul>
+</section>
+
+<!-- ─── 02 ARCHITECTURE ─── -->
+<section class="section" id="architecture">
+  <div class="section-header">
+    <div class="section-num-big">02</div>
+    <div class="section-title-block">
+      <div class="section-title">High-level architecture</div>
+      <div class="section-subtitle">How the browser, the cluster, and the managed services fit together</div>
+    </div>
+  </div>
+
+  <h3>System map</h3>
+  <div class="scale-diagram">
+<span class="hi">Browser (React + Vite frontend)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓ HTTP / WebSocket / SSE<br>
+<span class="hi">nginx Ingress Controller</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+<span class="green">Core services</span> &nbsp;auth · sandbox · ai · router · notification<br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓ Kubernetes API<br>
+<span class="green">Per-sandbox pods</span> &nbsp;template + agent (shared /workspace volume)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+<span class="hi">External managed services</span><br>
+&nbsp;&nbsp;MongoDB Atlas · Redis · RabbitMQ · MistralAI · Gmail SMTP
+  </div>
+
+  <h3>Five core services</h3>
+  <table class="flag-table">
+    <thead><tr><th>Service</th><th>Image</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">auth-service</span></td><td><span class="f-val">auth</span></td><td class="f-desc">Google OAuth 2.0 login, JWT issuance, user record persistence, login event dispatch via RabbitMQ.</td></tr>
+      <tr><td><span class="f-name">sandbox-service</span></td><td><span class="f-val">sandbox</span></td><td class="f-desc">Provisions new sandbox pods + per-sandbox services. Listens for Redis key expiry to clean up dead sandboxes.</td></tr>
+      <tr><td><span class="f-name">ai-service</span></td><td><span class="f-val">ai-orchestration</span></td><td class="f-desc">Hosts the LangGraph ReAct agent. Streams responses via SSE. Proxies file tool calls to per-sandbox agent sidecars.</td></tr>
+      <tr><td><span class="f-name">router-service</span></td><td><span class="f-val">router</span></td><td class="f-desc">Subdomain reverse proxy. Routes <code>{id}.preview.localhost</code> and <code>{id}.agent.localhost</code> to the right per-sandbox service. Refreshes Redis TTL on every request.</td></tr>
+      <tr><td><span class="f-name">notification-service</span></td><td><span class="f-val">notification</span></td><td class="f-desc">Consumes <code>auth_notification_queue</code> and sends login alert emails via Gmail OAuth2.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Per-sandbox pod (created on demand)</h3>
+  <p>Every active session has its own pod with two containers sharing an <code>emptyDir</code> volume mounted at <code>/workspace</code>:</p>
+
+  <ul>
+    <li><strong>template container</strong> — runs <code>npm run dev</code>, exposes Vite on port 5173</li>
+    <li><strong>agent container</strong> — file API + PTY over Socket.IO on port 3000</li>
+  </ul>
+
+  <p>An init container seeds the shared volume from the template image's <code>/workspace</code>. Both runtime containers see the same file tree, so writes from the agent are picked up by Vite's watcher.</p>
+</section>
+
+<!-- ─── 03 SERVICES ─── -->
+<section class="section" id="services">
+  <div class="section-header">
+    <div class="section-num-big">03</div>
+    <div class="section-title-block">
+      <div class="section-title">Microservices breakdown</div>
+      <div class="section-subtitle">Each service explained — directory, port, deps, API surface</div>
+    </div>
+  </div>
+
+  <!-- 3.1 Auth -->
+  <div class="step-label">Auth Service</div>
+  <table class="flag-table">
+    <tbody>
+      <tr><td><span class="f-name">Directory</span></td><td class="f-desc"><code>auth/</code></td></tr>
+      <tr><td><span class="f-name">Framework</span></td><td class="f-desc">Express 5 on Node 20 (ES modules)</td></tr>
+      <tr><td><span class="f-name">Port</span></td><td class="f-desc">3000 (exposed at <code>:80</code> via ClusterIP)</td></tr>
+      <tr><td><span class="f-name">Replicas</span></td><td class="f-desc">1</td></tr>
+      <tr><td><span class="f-name">Dependencies</span></td><td class="f-desc">MongoDB Atlas, RabbitMQ, Google OAuth, JWT</td></tr>
+    </tbody>
+  </table>
+
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/auth/google</span></td><td class="f-desc">Initiates the Google OAuth redirect flow.</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/auth/google/callback</span></td><td class="f-desc">OAuth callback. Upserts the user, signs a 1-hour JWT, returns it as an <code>httpOnly</code> cookie.</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/_status/healthz</span></td><td class="f-desc">Liveness probe.</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/_status/readyz</span></td><td class="f-desc">Readiness probe.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Key packages: <code>passport</code>, <code>passport-google-oauth20</code>, <code>jsonwebtoken</code>, <code>mongoose</code>, <code>amqplib</code>, <code>cookie-parser</code>.</p>
+
+  <hr class="divider">
+
+  <!-- 3.2 AI -->
+  <div class="step-label">AI Orchestration Service</div>
+  <table class="flag-table">
+    <tbody>
+      <tr><td><span class="f-name">Directory</span></td><td class="f-desc"><code>ai-orchestration/</code></td></tr>
+      <tr><td><span class="f-name">Framework</span></td><td class="f-desc">Express 5 + LangChain + LangGraph</td></tr>
+      <tr><td><span class="f-name">Port</span></td><td class="f-desc">3000</td></tr>
+      <tr><td><span class="f-name">Replicas</span></td><td class="f-desc">2 (CPU-bound, scales under streaming load)</td></tr>
+      <tr><td><span class="f-name">Model</span></td><td class="f-desc"><code>mistral-large-latest</code> via MistralAI API</td></tr>
+    </tbody>
+  </table>
+
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">POST</span></td><td><span class="f-val">/api/ai/invoke</span></td><td class="f-desc">Streams agent activity + final response over SSE. Body: <code>{ message, projectId }</code>.</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/status/healthz</span></td><td class="f-desc">Liveness probe.</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+
+  <!-- 3.3 Notification -->
+  <div class="step-label">Notification Service</div>
+  <table class="flag-table">
+    <tbody>
+      <tr><td><span class="f-name">Directory</span></td><td class="f-desc"><code>notification/</code></td></tr>
+      <tr><td><span class="f-name">Framework</span></td><td class="f-desc">Express 5 + amqplib + nodemailer</td></tr>
+      <tr><td><span class="f-name">Port</span></td><td class="f-desc">4000</td></tr>
+      <tr><td><span class="f-name">Queue</span></td><td class="f-desc"><code>auth_notification_queue</code> (durable, persistent delivery)</td></tr>
+    </tbody>
+  </table>
+  <p>Consumes login events off RabbitMQ and sends an alert email via Gmail OAuth2. HTTP endpoints exist only for health probes.</p>
+
+  <hr class="divider">
+
+  <!-- 3.4 Sandbox Server -->
+  <div class="step-label">Sandbox Server</div>
+  <table class="flag-table">
+    <tbody>
+      <tr><td><span class="f-name">Directory</span></td><td class="f-desc"><code>sandbox/server/</code></td></tr>
+      <tr><td><span class="f-name">Service account</span></td><td class="f-desc"><code>resource-manager</code> (has pods + services RBAC)</td></tr>
+      <tr><td><span class="f-name">K8s client</span></td><td class="f-desc"><code>@kubernetes/client-node</code></td></tr>
+      <tr><td><span class="f-name">Redis</span></td><td class="f-desc">Stores <code>sandbox:&#123;id&#125;</code> with 120s TTL; subscribes to <code>__keyevent@0__:expired</code> for cleanup.</td></tr>
+    </tbody>
+  </table>
+
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">POST</span></td><td><span class="f-val">/api/sandbox/start</span></td><td class="f-desc">Creates pod + service + Redis key. Returns <code>{ sandboxId, previewUrl }</code>.</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/sandbox/health</span></td><td class="f-desc">Health check.</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+
+  <!-- 3.5 Router -->
+  <div class="step-label">Sandbox Router</div>
+  <table class="flag-table">
+    <tbody>
+      <tr><td><span class="f-name">Directory</span></td><td class="f-desc"><code>sandbox/router/</code></td></tr>
+      <tr><td><span class="f-name">Proxy libs</span></td><td class="f-desc"><code>http-proxy-middleware</code> v4 (HTTP) + <code>httpxy</code> (WS upgrades)</td></tr>
+      <tr><td><span class="f-name">TTL refresh</span></td><td class="f-desc">Every proxied request calls <code>EXPIRE sandbox:&#123;id&#125; 120</code></td></tr>
+    </tbody>
+  </table>
+
+  <table class="flag-table">
+    <thead><tr><th>Host</th><th>Routes to</th><th>Port</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">{id}.preview.localhost</span></td><td><span class="f-val">sandbox-service-{id}</span></td><td class="f-desc">80 → 5173 (Vite)</td></tr>
+      <tr><td><span class="f-name">{id}.agent.localhost</span></td><td><span class="f-val">sandbox-service-{id}</span></td><td class="f-desc">3000 → 3000 (Agent)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="concept">
+    <div class="concept-label">Why a separate router</div>
+    <p>nginx ingress can't read the dynamic subdomain ID and route to a per-sandbox ClusterIP service without one rule per sandbox. The Router parses <code>req.headers.host</code> at request time and proxies to the right backend — a single ingress entry handles all sandboxes.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- 3.6 Agent -->
+  <div class="step-label">Sandbox Agent (Sidecar)</div>
+  <table class="flag-table">
+    <tbody>
+      <tr><td><span class="f-name">Directory</span></td><td class="f-desc"><code>sandbox/agent/</code></td></tr>
+      <tr><td><span class="f-name">Base image</span></td><td class="f-desc"><code>node:20-bullseye</code> (Debian — required for <code>node-pty</code> native compile)</td></tr>
+      <tr><td><span class="f-name">Working dir</span></td><td class="f-desc"><code>/workspace</code> (shared <code>emptyDir</code> volume)</td></tr>
+    </tbody>
+  </table>
+
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/list-files</span></td><td class="f-desc">Recursively lists files in <code>/workspace</code> (excludes <code>node_modules</code>, <code>.git</code>, <code>dist</code>).</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/read-files?files=a,b</span></td><td class="f-desc">Returns contents for the requested files.</td></tr>
+      <tr><td><span class="f-name">PATCH</span></td><td><span class="f-val">/update-files</span></td><td class="f-desc">Writes / overwrites file contents. Creates parent dirs.</td></tr>
+      <tr><td><span class="f-name">POST</span></td><td><span class="f-val">/create-files</span></td><td class="f-desc">Creates new files.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Socket.IO events on the same port: <code>terminal-output</code> (server → client, PTY data) and <code>terminal-input</code> (client → server, keystrokes).</p>
+
+  <hr class="divider">
+
+  <!-- 3.7 Template -->
+  <div class="step-label">Sandbox Template</div>
+  <p>Pre-built React + Vite project. Used as both the init container (seeds <code>/seed</code>) and the main runtime container (runs <code>npm run dev</code> on <code>/workspace</code>). Image: <code>node:20-alpine</code>.</p>
+
+  <hr class="divider">
+
+  <!-- 3.8 Frontend -->
+  <div class="step-label">Frontend (Client IDE)</div>
+  <p>Browser-based IDE. React 19 + Vite 8 + Tailwind v4. Components:</p>
+
+  <table class="flag-table">
+    <thead><tr><th>Component</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">SplashScreen</span></td><td class="f-desc">Landing page. Calls <code>POST /api/sandbox/start</code>.</td></tr>
+      <tr><td><span class="f-name">TopBar</span></td><td class="f-desc">Preview / Files tab switcher, sandbox ID, status indicator.</td></tr>
+      <tr><td><span class="f-name">FileExplorer</span></td><td class="f-desc">Tree-view sidebar. Refreshes on AI edits.</td></tr>
+      <tr><td><span class="f-name">FileViewer</span></td><td class="f-desc">Read-only code viewer.</td></tr>
+      <tr><td><span class="f-name">PreviewFrame</span></td><td class="f-desc">iframe pointing to <code>{id}.preview.localhost</code> with refresh + new-tab toolbar.</td></tr>
+      <tr><td><span class="f-name">Terminal</span></td><td class="f-desc">xterm.js terminal over Socket.IO.</td></tr>
+      <tr><td><span class="f-name">AiChat</span></td><td class="f-desc">Chat panel. Consumes SSE from <code>/api/ai/invoke</code>. Renders activity log under AI bubbles.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 04 LIFECYCLE ─── -->
+<section class="section" id="lifecycle">
+  <div class="section-header">
+    <div class="section-num-big">04</div>
+    <div class="section-title-block">
+      <div class="section-title">Sandbox lifecycle</div>
+      <div class="section-subtitle">From "Create Sandbox" click to TTL-driven cleanup</div>
+    </div>
+  </div>
+
+  <h3>Provisioning flow</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+      <div class="flow-content">
+        <div class="flow-title">User clicks "Create Sandbox" on SplashScreen</div>
+        <div class="flow-detail">Frontend issues POST /api/sandbox/start</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+      <div class="flow-content">
+        <div class="flow-title">Ingress routes to sandbox-service (ClusterIP)</div>
+        <div class="flow-detail">/api/sandbox prefix matches the sandbox deployment</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+      <div class="flow-content">
+        <div class="flow-title">Sandbox server generates UUIDv7 → sandboxId</div>
+        <div class="flow-detail">Used as pod name suffix, service selector, and Redis key</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+      <div class="flow-content">
+        <div class="flow-title">Pod + service + Redis key created in parallel</div>
+        <div class="flow-detail">createNamespacedPod, createNamespacedService, SET sandbox:{id} EX 120</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-line"><div class="flow-dot" style="background:var(--accent2)"></div></div>
+      <div class="flow-content">
+        <div class="flow-title">Response returned to client</div>
+        <div class="flow-detail">{ sandboxId, previewUrl: "http://{id}.preview.localhost" }</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Pod specification</h3>
+
+  <div class="step-label blue">Init container</div>
+  <p>Image <code>template</code>. Runs <code>sh -c 'cp -r /workspace/. /seed/'</code> — copies the pre-built React/Vite template from the image into the shared <code>emptyDir</code> volume.</p>
+
+  <div class="step-label">Container 1 — sandbox-container</div>
+  <p>Image <code>template</code>. Starts Vite dev server. Port 5173. CPU 250m/500m, memory 500Mi/1Gi.</p>
+
+  <div class="step-label">Container 2 — agent-container</div>
+  <p>Image <code>agent</code>. File API + PTY. Port 3000. CPU 250m/500m, memory 500Mi/1Gi.</p>
+
+  <div class="concept">
+    <div class="concept-label">Why shared emptyDir</div>
+    <p>Both containers mount <code>workspace-volume</code> at <code>/workspace</code>. The init container seeds it once. After that, every file the agent writes is immediately visible to Vite's file watcher — which is exactly what enables instant HMR after AI edits.</p>
+  </div>
+
+  <h3>Per-sandbox K8s service</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">sandbox-service-{id}.yaml (generated)</span></div>
+<pre><span class="c-key">ports</span>:
+  - <span class="c-key">name</span>: <span class="c-val">http</span>        <span class="c-key">port</span>: <span class="c-val">80</span>   <span class="c-key">targetPort</span>: <span class="c-val">5173</span>  <span class="c-comment"># Vite preview</span>
+  - <span class="c-key">name</span>: <span class="c-val">agent-http</span>  <span class="c-key">port</span>: <span class="c-val">3000</span> <span class="c-key">targetPort</span>: <span class="c-val">3000</span>  <span class="c-comment"># Agent API</span>
+<span class="c-key">selector</span>:
+  <span class="c-key">sandboxId</span>: <span class="c-val">{sandboxId}</span>   <span class="c-comment"># unique — prevents cross-sandbox routing</span>
+<span class="c-key">type</span>: <span class="c-val">ClusterIP</span></pre>
+  </div>
+
+  <div class="note">
+    <div class="note-icon">💡</div>
+    <p>The selector uses <code>sandboxId</code>, <strong>not</strong> a shared label like <code>app: sandbox</code>. This guarantees each per-sandbox service routes only to its paired pod — no cross-tenant traffic possible.</p>
+  </div>
+
+  <h3>TTL &amp; cleanup policy</h3>
+  <ul>
+    <li>On creation, <code>sandbox:{id}</code> is stored in Redis with a <strong>120-second TTL</strong>.</li>
+    <li>Every HTTP / WebSocket request through the Router calls <code>EXPIRE sandbox:{id} 120</code> — TTL is effectively activity-based.</li>
+    <li>An ioredis subscriber in the sandbox server listens on <code>__keyevent@0__:expired</code>. On expiry it calls <code>deleteNamespacedPod</code> + <code>deleteNamespacedService</code> with <code>gracePeriodSeconds: 0</code>.</li>
+    <li>No persistent storage — the <code>emptyDir</code> volume dies with the pod.</li>
+  </ul>
+
+  <h3>Subdomain routing</h3>
+  <p>The nginx ingress maps both wildcard hosts to the router:</p>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">ingress (wildcard rules)</span></div>
+<pre>*.preview.localhost  →  router-service :80
+*.agent.localhost    →  router-service :80</pre>
+  </div>
+
+  <p>The Router reads <code>req.headers.host</code>, splits on <code>.</code> to extract <code>sandboxId</code> and <code>type</code> (<code>preview</code> vs <code>agent</code>), and proxies to the matching <code>sandbox-service-{sandboxId}</code> ClusterIP.</p>
+</section>
+
+<!-- ─── 05 AI ─── -->
+<section class="section" id="ai">
+  <div class="section-header">
+    <div class="section-num-big">05</div>
+    <div class="section-title-block">
+      <div class="section-title">AI code editing layer</div>
+      <div class="section-subtitle">How user intent becomes file writes inside a running pod</div>
+    </div>
+  </div>
+
+  <h3>Agent architecture</h3>
+  <p>The AI layer uses LangChain + LangGraph to build a stateful ReAct agent:</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">agent.js (simplified)</span></div>
+<pre><span class="c-key">LangGraph</span>.<span class="c-cmd">createAgent</span>({
+  <span class="c-key">model</span>:  <span class="c-cmd">ChatMistralAI</span>(<span class="c-str">"mistral-large-latest"</span>),
+  <span class="c-key">tools</span>:  [list_files, read_files, update_files],
+  <span class="c-key">systemPrompt</span>: <span class="c-str">"codeSpace — expert AI frontend engineer..."</span>,
+  <span class="c-key">recursionLimit</span>: <span class="c-val">100</span>
+})</pre>
+  </div>
+
+  <p>Standard tool-calling loop: the agent receives a user message, decides which tools to call, executes them, receives results, and repeats until it has enough information to produce a final response.</p>
+
+  <h3>Streaming response (SSE)</h3>
+  <p>The <code>POST /api/ai/invoke</code> endpoint sets <code>Content-Type: text/event-stream</code> and flushes text over the open connection:</p>
+
+  <table class="flag-table">
+    <thead><tr><th>Output type</th><th>Source</th><th>Rendered as</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">Activity lines</span></td><td><span class="f-val">writer callback</span></td><td class="f-desc">Tool progress: <code>"Listing files..."</code>, <code>"Reading files..."</code>, <code>"Updating files..."</code></td></tr>
+      <tr><td><span class="f-name">Final response</span></td><td><span class="f-val">last ai message</span></td><td class="f-desc">The last <code>ai</code>-role message with no <code>tool_calls</code> — written, then <code>res.end()</code> closes the stream.</td></tr>
+    </tbody>
+  </table>
+
+  <p>The frontend's <code>AiChat</code> reads the stream with the Fetch API's <code>ReadableStream</code>, classifies each line, and renders an expandable activity log under the AI bubble.</p>
+
+  <h3>Tools the agent has</h3>
+  <table class="flag-table">
+    <thead><tr><th>Tool</th><th>HTTP call</th><th>Returns</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">list_files</span></td><td><span class="f-val">GET .../list-files</span></td><td class="f-desc">Flat array of all file paths in <code>/workspace</code>.</td></tr>
+      <tr><td><span class="f-name">read_files</span></td><td><span class="f-val">GET .../read-files?files=…</span></td><td class="f-desc">Map of <code>{ path: content }</code> for requested files.</td></tr>
+      <tr><td><span class="f-name">update_files</span></td><td><span class="f-val">PATCH .../update-files</span></td><td class="f-desc">Writes full file contents. Creates parent directories.</td></tr>
+    </tbody>
+  </table>
+
+  <p>All tools receive <code>config.context.projectId</code> and <code>config.context.writer</code> via LangGraph's runnable config. The agent reaches the sandbox agent sidecar over Kubernetes internal DNS: <code>http://sandbox-service-{sandboxId}:3000</code> resolves to the per-sandbox ClusterIP.</p>
+
+  <h3>Agent workflow (from system prompt)</h3>
+  <ol>
+    <li><strong>Understand</strong> — parse user intent, identify implicit requirements.</li>
+    <li><strong>Plan</strong> — outline component tree, styling approach, sections.</li>
+    <li><strong>Explore</strong> — <code>list_files</code> → <code>read_files</code> on entry points and target files.</li>
+    <li><strong>Build</strong> — <code>update_files</code> in batched calls: configs first, shared components next, pages last.</li>
+    <li><strong>Polish</strong> — verify responsiveness, imports, accessibility.</li>
+    <li><strong>Report</strong> — summarize changes (written to stream, not to files).</li>
+  </ol>
+
+  <h3>Hot reload integration</h3>
+  <p>File writes from <code>update_files</code> land on the shared <code>emptyDir</code> volume. Vite's file watcher (configured with <code>usePolling: true</code>, <code>interval: 300ms</code>) detects the change and sends an HMR update over the WebSocket at <code>ws://{id}.preview.localhost</code>. The PreviewFrame iframe receives the update and patches the DOM without a full reload.</p>
+
+  <h3>Model parameters</h3>
+  <table class="flag-table">
+    <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">Provider</span></td><td class="f-desc">MistralAI</td></tr>
+      <tr><td><span class="f-name">Model ID</span></td><td><span class="f-val">mistral-large-latest</span></td></tr>
+      <tr><td><span class="f-name">Temperature</span></td><td><span class="f-val">0.7</span></td></tr>
+      <tr><td><span class="f-name">Max recursion</span></td><td class="f-desc">100 LangGraph steps</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Context window management</h3>
+  <p>The agent uses the full LangGraph message history within a single invocation. There is currently <strong>no cross-session memory</strong> — each <code>POST /api/ai/invoke</code> starts a fresh agent run with only the current user message. The agent always calls <code>list_files</code> first to orient itself, then <code>read_files</code> on relevant files before making edits.</p>
+
+  <h3>Error handling</h3>
+  <ul>
+    <li>If the agent throws during streaming, the catch block checks <code>res.headersSent</code>. If headers were already sent, it calls <code>res.end()</code> gracefully; otherwise it returns <code>500 { error: "Failed to invoke agent" }</code>.</li>
+    <li>Individual tool errors (file not found, etc.) return error strings in the tool result object rather than throwing — the agent can reason about the failure and retry or skip.</li>
+    <li>File writes include <code>mkdir -p</code> semantics (<code>recursive: true</code>) so the agent can create files in new directories without a separate step.</li>
+  </ul>
+</section>
+
+<!-- ─── 06 DATA ─── -->
+<section class="section" id="data">
+  <div class="section-header">
+    <div class="section-num-big">06</div>
+    <div class="section-title-block">
+      <div class="section-title">Data models &amp; schemas</div>
+      <div class="section-subtitle">What lives in MongoDB, what lives in Redis, what flows through RabbitMQ</div>
+    </div>
+  </div>
+
+  <h3>User (MongoDB — auth database)</h3>
+  <p>Collection: <code>users</code></p>
+
+  <table class="flag-table">
+    <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">_id</span></td><td><span class="f-val">ObjectId</span></td><td class="f-desc">PK, auto-assigned.</td></tr>
+      <tr><td><span class="f-name">googleId</span></td><td><span class="f-val">String</span></td><td class="f-desc">Required, unique. From Google OAuth <code>profile.id</code>.</td></tr>
+      <tr><td><span class="f-name">email</span></td><td><span class="f-val">String</span></td><td class="f-desc">Required, unique. Primary email from Google profile.</td></tr>
+      <tr><td><span class="f-name">name</span></td><td><span class="f-val">String</span></td><td class="f-desc">Required. Display name from Google profile.</td></tr>
+      <tr><td><span class="f-name">avatar</span></td><td><span class="f-val">String</span></td><td class="f-desc">Profile photo URL.</td></tr>
+      <tr><td><span class="f-name">createdAt</span></td><td><span class="f-val">Date</span></td><td class="f-desc">Auto-generated by <code>timestamps: true</code>.</td></tr>
+      <tr><td><span class="f-name">updatedAt</span></td><td><span class="f-val">Date</span></td><td class="f-desc">Auto-updated.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Indexes: <code>googleId</code> (unique), <code>email</code> (unique).</p>
+
+  <h3>Sandbox state (Redis)</h3>
+  <p>Sandbox lifecycle is tracked in Redis only — no persistent record in MongoDB.</p>
+
+  <table class="flag-table">
+    <thead><tr><th>Aspect</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">Key format</span></td><td><span class="f-val">sandbox:{sandboxId}</span></td></tr>
+      <tr><td><span class="f-name">Value</span></td><td class="f-desc">JSON string: <code>&#123; "status": "active" &#125;</code></td></tr>
+      <tr><td><span class="f-name">TTL</span></td><td class="f-desc">120 seconds, refreshed on every proxied request</td></tr>
+      <tr><td><span class="f-name">Expiry handler</span></td><td class="f-desc">Sandbox server subscribes to <code>__keyevent@0__:expired</code>; deletes the K8s pod + service.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>AI edit history</h3>
+  <div class="note">
+    <div class="note-icon">💡</div>
+    <p><strong>Not yet implemented.</strong> A suggested schema (collection <code>ai_edits</code>): <code>sandboxId</code>, <code>userId</code>, <code>userMessage</code>, <code>filesModified[]</code>, <code>agentSteps</code>, <code>createdAt</code>. Wire this up if you need undo / edit history.</p>
+  </div>
+
+  <h3>Message queue payload</h3>
+  <p>Queue: <code>auth_notification_queue</code> (RabbitMQ, durable, persistent delivery)</p>
+  <table class="flag-table">
+    <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">userId</span></td><td><span class="f-val">ObjectId (string)</span></td><td class="f-desc">Auth service user <code>_id</code>.</td></tr>
+      <tr><td><span class="f-name">action</span></td><td><span class="f-val">String</span></td><td class="f-desc">Currently always <code>"google_login"</code>.</td></tr>
+      <tr><td><span class="f-name">timestamp</span></td><td><span class="f-val">Date</span></td><td class="f-desc">ISO timestamp of the login event.</td></tr>
+      <tr><td><span class="f-name">email</span></td><td><span class="f-val">String</span></td><td class="f-desc">User's email address.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 07 CLUSTER ─── -->
+<section class="section" id="cluster">
+  <div class="section-header">
+    <div class="section-num-big">07</div>
+    <div class="section-title-block">
+      <div class="section-title">Kubernetes cluster design</div>
+      <div class="section-subtitle">Namespaces, resources, RBAC, secrets, networking</div>
+    </div>
+  </div>
+
+  <h3>Namespace strategy</h3>
+  <table class="flag-table">
+    <thead><tr><th>Namespace</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">default</span></td><td class="f-desc">All application workloads + all dynamic sandbox pods/services.</td></tr>
+      <tr><td><span class="f-name">ingress-nginx</span></td><td class="f-desc">nginx Ingress Controller (installed separately).</td></tr>
+      <tr><td><span class="f-name">kube-system</span></td><td class="f-desc">Cluster system components.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Deployed workloads</h3>
+  <table class="flag-table">
+    <thead><tr><th>Deployment</th><th>Replicas</th><th>CPU req/limit</th><th>Memory req/limit</th><th>ServiceAccount</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">auth-deployment</span></td><td><span class="f-val">1</span></td><td class="f-desc">250m / 500m</td><td class="f-desc">128Mi / 256Mi</td><td class="f-desc">default</td></tr>
+      <tr><td><span class="f-name">ai-deployment</span></td><td><span class="f-val">2</span></td><td class="f-desc">250m / 500m</td><td class="f-desc">128Mi / 256Mi</td><td class="f-desc">default</td></tr>
+      <tr><td><span class="f-name">sandbox-deployment</span></td><td><span class="f-val">1</span></td><td class="f-desc">250m / 500m</td><td class="f-desc">200Mi / 400Mi</td><td class="f-desc"><code>resource-manager</code></td></tr>
+      <tr><td><span class="f-name">router-deployment</span></td><td><span class="f-val">1</span></td><td class="f-desc">250m / 500m</td><td class="f-desc">250Mi / 500Mi</td><td class="f-desc">default</td></tr>
+      <tr><td><span class="f-name">notification-deployment</span></td><td><span class="f-val">1</span></td><td class="f-desc">150m / 300m</td><td class="f-desc">100Mi / 200Mi</td><td class="f-desc">default</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Per-sandbox pods (dynamic)</h4>
+  <table class="flag-table">
+    <thead><tr><th>Container</th><th>Image</th><th>CPU req/limit</th><th>Memory req/limit</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">sandbox-container</span></td><td><span class="f-val">template</span></td><td class="f-desc">250m / 500m</td><td class="f-desc">500Mi / 1Gi</td></tr>
+      <tr><td><span class="f-name">agent-container</span></td><td><span class="f-val">agent</span></td><td class="f-desc">250m / 500m</td><td class="f-desc">500Mi / 1Gi</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Services</h3>
+  <table class="flag-table">
+    <thead><tr><th>Service</th><th>Type</th><th>Port mapping</th><th>Selector</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">auth-service</span></td><td>ClusterIP</td><td><span class="f-val">80 → 3000</span></td><td class="f-desc"><code>app: auth</code></td></tr>
+      <tr><td><span class="f-name">ai-service</span></td><td>ClusterIP</td><td><span class="f-val">80 → 3000</span></td><td class="f-desc"><code>app: ai-server</code></td></tr>
+      <tr><td><span class="f-name">sandbox-service</span></td><td>ClusterIP</td><td><span class="f-val">80 → 3000</span></td><td class="f-desc"><code>app: sandbox</code></td></tr>
+      <tr><td><span class="f-name">router-service</span></td><td>ClusterIP</td><td><span class="f-val">80 → 3000</span></td><td class="f-desc"><code>app: router</code></td></tr>
+      <tr><td><span class="f-name">notification-service</span></td><td>ClusterIP</td><td><span class="f-val">80 → 4000</span></td><td class="f-desc"><code>app: notification</code></td></tr>
+      <tr><td><span class="f-name">sandbox-service-{id}</span></td><td>ClusterIP</td><td><span class="f-val">80 → 5173, 3000 → 3000</span></td><td class="f-desc"><code>sandboxId: {id}</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ingress &amp; routing rules</h3>
+  <p>Ingress name: <code>codespace-ingress</code>. Class: <code>nginx</code>.</p>
+
+  <h4>Critical annotations</h4>
+  <ul>
+    <li><code>proxy-read-timeout: 6000s</code>, <code>proxy-send-timeout: 6000s</code>, <code>proxy-connect-timeout: 6000s</code> — long-lived SSE + WebSocket sessions</li>
+    <li><code>affinity: cookie</code>, <code>session-cookie-name: route</code>, <code>session-cookie-path: /</code> — sticky sessions so WS upgrades land on the same backend as the initial HTTP handshake</li>
+  </ul>
+
+  <table class="flag-table">
+    <thead><tr><th>Host</th><th>Path</th><th>Backend</th><th>Port</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">*</span></td><td><span class="f-val">/api/sandbox</span></td><td>sandbox-service</td><td>80</td></tr>
+      <tr><td><span class="f-name">*</span></td><td><span class="f-val">/api/ai</span></td><td>ai-service</td><td>80</td></tr>
+      <tr><td><span class="f-name">*</span></td><td><span class="f-val">/api/auth</span></td><td>auth-service</td><td>80</td></tr>
+      <tr><td><span class="f-name">*.preview.localhost</span></td><td><span class="f-val">/</span></td><td>router-service</td><td>80</td></tr>
+      <tr><td><span class="f-name">*.agent.localhost</span></td><td><span class="f-val">/</span></td><td>router-service</td><td>80</td></tr>
+    </tbody>
+  </table>
+
+  <h3>RBAC</h3>
+  <p>The sandbox server is the only workload that needs Kubernetes API write access. It uses a dedicated service account:</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">k8s/rbac.yml (summary)</span></div>
+<pre><span class="c-key">ServiceAccount</span>: resource-manager
+<span class="c-key">Role</span>: resource-manager
+  <span class="c-key">rules</span>:
+  - <span class="c-key">apiGroups</span>: [<span class="c-str">""</span>]
+    <span class="c-key">resources</span>: [<span class="c-str">"pods"</span>, <span class="c-str">"services"</span>]
+    <span class="c-key">verbs</span>: [<span class="c-str">"get"</span>, <span class="c-str">"list"</span>, <span class="c-str">"watch"</span>, <span class="c-str">"create"</span>, <span class="c-str">"delete"</span>]
+<span class="c-key">RoleBinding</span>: resource-manager-binding
+  <span class="c-key">subjects</span>: [ServiceAccount: resource-manager]
+  <span class="c-key">roleRef</span>: Role: resource-manager</pre>
+  </div>
+
+  <h3>Secrets strategy</h3>
+  <table class="flag-table">
+    <thead><tr><th>Secret</th><th>Keys</th><th>Consumed by</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">database</span></td><td class="f-desc"><code>AUTH</code>, <code>SANDBOX</code>, <code>AI</code>, <code>REDIS_URL</code>, <code>RABBITMQ_URL</code>, <code>RABBITMQ_PORT</code></td><td class="f-desc">auth, sandbox, router, ai</td></tr>
+      <tr><td><span class="f-name">jwt</span></td><td><span class="f-val">JWT_SECRET</span></td><td class="f-desc">auth</td></tr>
+      <tr><td><span class="f-name">google</span></td><td class="f-desc"><code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code>, <code>GOOGLE_REFRESH_TOKEN</code>, <code>EMAIL_USER</code></td><td class="f-desc">auth, notification</td></tr>
+      <tr><td><span class="f-name">ai-secret</span></td><td><span class="f-val">MISTRAL_API_KEY</span></td><td class="f-desc">ai-orchestration</td></tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <div class="note-icon">⚠️</div>
+    <p><strong><code>k8s/secrets.yml</code> currently contains plaintext credentials and is committed to the repo.</strong> Replace with Sealed Secrets, External Secrets Operator, or SOPS+age before any deployment beyond local development. See section 12.</p>
+  </div>
+
+  <h3>Persistent storage</h3>
+  <p>No PVCs. All sandbox storage uses <code>emptyDir</code> volumes — ephemeral, tied to pod lifetime. Intentional: sandboxes are throwaway. Add PVC-backed storage if save/resume is needed.</p>
+
+  <h3>Autoscaling</h3>
+  <div class="note">
+    <div class="note-icon">💡</div>
+    <p>No HPA configured. Recommended starting points: ai-orchestration <code>minReplicas: 2, maxReplicas: 10, targetCPU: 70%</code>; router <code>minReplicas: 1, maxReplicas: 5, targetCPU: 60%</code>.</p>
+  </div>
+</section>
+
+<!-- ─── 08 SETUP ─── -->
+<section class="section" id="setup">
+  <div class="section-header">
+    <div class="section-num-big">08</div>
+    <div class="section-title-block">
+      <div class="section-title">Local development setup</div>
+      <div class="section-subtitle">From a fresh checkout to a running sandbox in your browser</div>
+    </div>
+  </div>
+
+  <h3>Prerequisites</h3>
+  <table class="flag-table">
+    <thead><tr><th>Tool</th><th>Minimum</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">Node.js</span></td><td><span class="f-val">20.x</span></td><td class="f-desc">Runtime for every backend service + the frontend.</td></tr>
+      <tr><td><span class="f-name">npm</span></td><td><span class="f-val">10.x</span></td><td class="f-desc">Package management.</td></tr>
+      <tr><td><span class="f-name">Docker</span></td><td><span class="f-val">24.x</span></td><td class="f-desc">Image builds.</td></tr>
+      <tr><td><span class="f-name">kubectl</span></td><td><span class="f-val">1.28+</span></td><td class="f-desc">Cluster management.</td></tr>
+      <tr><td><span class="f-name">minikube / kind</span></td><td><span class="f-val">latest</span></td><td class="f-desc">Local Kubernetes cluster.</td></tr>
+      <tr><td><span class="f-name">skaffold</span></td><td><span class="f-val">v2.x</span></td><td class="f-desc">Build + deploy orchestration in one command.</td></tr>
+      <tr><td><span class="f-name">nginx ingress</span></td><td><span class="f-val">latest</span></td><td class="f-desc">Wildcard subdomain routing.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Step-by-step</h3>
+
+  <div class="step-label">Step 1 — Clone &amp; start the cluster</div>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-cmd">git</span> clone &lt;repo-url&gt;
+<span class="c-cmd">cd</span> capstone
+
+<span class="c-cmd">minikube</span> start <span class="c-flag">--driver</span>=<span class="c-val">docker</span> <span class="c-flag">--cpus</span>=<span class="c-val">4</span> <span class="c-flag">--memory</span>=<span class="c-val">8g</span></pre>
+  </div>
+
+  <div class="step-label">Step 2 — Enable nginx ingress addon</div>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-cmd">minikube</span> addons enable ingress</pre>
+  </div>
+
+  <div class="step-label">Step 3 — Point Docker at minikube's daemon</div>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-cmd">eval</span> $(<span class="c-cmd">minikube</span> docker-env)
+<span class="c-comment"># so skaffold-built images are visible inside the cluster</span></pre>
+  </div>
+
+  <div class="step-label">Step 4 — Configure secrets</div>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-cmd">cp</span> k8s/secrets.yml k8s/secrets.local.yml
+<span class="c-comment"># edit k8s/secrets.local.yml — MongoDB URI, Redis, RabbitMQ, OAuth, MistralAI key</span>
+<span class="c-cmd">kubectl</span> apply <span class="c-flag">-f</span> k8s/secrets.local.yml</pre>
+  </div>
+
+  <div class="warn">
+    <div class="note-icon">⚠️</div>
+    <p>Never commit <code>k8s/secrets.local.yml</code>. It must be gitignored. Use a different filename or move secrets into a managed secrets store.</p>
+  </div>
+
+  <div class="step-label">Step 5 — Apply RBAC and deploy</div>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-cmd">kubectl</span> apply <span class="c-flag">-f</span> k8s/rbac.yml
+<span class="c-cmd">skaffold</span> dev
+<span class="c-comment"># builds all 7 images, applies all manifests, streams logs, hot-reloads on change</span></pre>
+  </div>
+
+  <div class="step-label">Step 6 — Run the frontend</div>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-cmd">cd</span> frontend
+<span class="c-cmd">npm</span> install
+<span class="c-cmd">npm</span> run dev
+<span class="c-comment"># → http://localhost:5173</span></pre>
+  </div>
+
+  <h3>Wildcard DNS for sandbox subdomains</h3>
+  <p>Sandbox previews live at <code>{id}.preview.localhost</code>. Configure your local resolver to point <code>*.localhost</code> at the minikube IP.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">macOS (dnsmasq)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-cmd">brew</span> install dnsmasq
+<span class="c-cmd">echo</span> <span class="c-str">"address=/.localhost/$(minikube ip)"</span> <span class="c-pipe">&gt;&gt;</span> /opt/homebrew/etc/dnsmasq.conf
+<span class="c-cmd">sudo</span> brew services start dnsmasq
+
+<span class="c-cmd">sudo</span> mkdir <span class="c-flag">-p</span> /etc/resolver
+<span class="c-cmd">echo</span> <span class="c-str">"nameserver 127.0.0.1"</span> <span class="c-pipe">|</span> <span class="c-cmd">sudo</span> tee /etc/resolver/localhost
+
+<span class="c-cmd">ping</span> testid.preview.localhost   <span class="c-comment"># should resolve to minikube IP</span></pre>
+  </div>
+
+  <h3>Simulating a sandbox spin-up</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><span class="c-comment"># 1. Create the sandbox</span>
+<span class="c-cmd">curl</span> <span class="c-flag">-X</span> <span class="c-val">POST</span> http://localhost:80/api/sandbox/start
+<span class="c-comment"># → { "sandboxId": "019e…", "previewUrl": "http://019e….preview.localhost" }</span>
+
+<span class="c-comment"># 2. Open the preview in a browser</span>
+
+<span class="c-comment"># 3. Call the agent directly</span>
+<span class="c-cmd">curl</span> <span class="c-str">"http://019e….agent.localhost/list-files"</span>
+
+<span class="c-comment"># 4. Update a file via the agent</span>
+<span class="c-cmd">curl</span> <span class="c-flag">-X</span> <span class="c-val">PATCH</span> http://019e….agent.localhost/update-files <span class="c-pipe">\</span>
+  <span class="c-flag">-H</span> <span class="c-str">"Content-Type: application/json"</span> <span class="c-pipe">\</span>
+  <span class="c-flag">-d</span> <span class="c-str">'{"updates":[{"file":"/src/App.jsx","content":"export default ()=>&lt;h1&gt;Hello&lt;/h1&gt;"}]}'</span></pre>
+  </div>
+</section>
+
+<!-- ─── 09 ENV VARS ─── -->
+<section class="section" id="env">
+  <div class="section-header">
+    <div class="section-num-big">09</div>
+    <div class="section-title-block">
+      <div class="section-title">Environment variables reference</div>
+      <div class="section-subtitle">Every variable, what it does, and which service consumes it</div>
+    </div>
+  </div>
+
+  <div class="step-label">Auth service</div>
+  <table class="flag-table">
+    <thead><tr><th>Variable</th><th>Example</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">AUTH_MONGO_URI</span></td><td><span class="f-val">mongodb+srv://…/auth</span></td><td class="f-desc">MongoDB Atlas connection for the auth DB.</td></tr>
+      <tr><td><span class="f-name">RABBITMQ_URL</span></td><td><span class="f-val">amqps://…</span></td><td class="f-desc">CloudAMQP / RabbitMQ AMQPS URL.</td></tr>
+      <tr><td><span class="f-name">GOOGLE_CLIENT_ID</span></td><td><span class="f-val">…apps.googleusercontent.com</span></td><td class="f-desc">Google OAuth 2.0 client ID.</td></tr>
+      <tr><td><span class="f-name">GOOGLE_CLIENT_SECRET</span></td><td><span class="f-val">GOCSPX-…</span></td><td class="f-desc">Google OAuth 2.0 client secret.</td></tr>
+      <tr><td><span class="f-name">JWT_SECRET</span></td><td><span class="f-val">≥32 chars</span></td><td class="f-desc">HMAC secret for JWT signing.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="step-label">AI orchestration service</div>
+  <table class="flag-table">
+    <thead><tr><th>Variable</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">MISTRALAI_API_KEY</span></td><td class="f-desc">MistralAI API key. <strong>Note:</strong> the K8s secret uses key <code>MISTRAL_API_KEY</code> — see Known Issues.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="step-label">Notification service</div>
+  <table class="flag-table">
+    <thead><tr><th>Variable</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">RABBITMQ_URL</span></td><td class="f-desc">RabbitMQ connection URL.</td></tr>
+      <tr><td><span class="f-name">EMAIL_USER</span></td><td class="f-desc">Gmail address that sends notifications.</td></tr>
+      <tr><td><span class="f-name">GOOGLE_CLIENT_ID</span></td><td class="f-desc">Google OAuth client ID for Gmail OAuth2.</td></tr>
+      <tr><td><span class="f-name">GOOGLE_CLIENT_SECRET</span></td><td class="f-desc">Google OAuth client secret.</td></tr>
+      <tr><td><span class="f-name">GOOGLE_REFRESH_TOKEN</span></td><td class="f-desc">Gmail OAuth2 refresh token.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="step-label">Sandbox server &amp; router</div>
+  <table class="flag-table">
+    <thead><tr><th>Variable</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">REDIS_URL</span></td><td class="f-desc">Redis connection URL. Supports both <code>redis://</code> and <code>rediss://</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="step-label blue">Sandbox agent (optional)</div>
+  <table class="flag-table">
+    <thead><tr><th>Variable</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">SHELL</span></td><td class="f-desc">Shell binary used by the PTY. Defaults to <code>bash</code>.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 10 API ─── -->
+<section class="section" id="api">
+  <div class="section-header">
+    <div class="section-num-big">10</div>
+    <div class="section-title-block">
+      <div class="section-title">API reference</div>
+      <div class="section-subtitle">Every public endpoint across all services</div>
+    </div>
+  </div>
+
+  <h3>Auth service</h3>
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>Body / Query</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/auth/google</span></td><td>—</td><td class="f-desc">302 redirect to Google OAuth.</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/auth/google/callback</span></td><td>—</td><td class="f-desc">302 + <code>Set-Cookie: token=&lt;jwt&gt;</code>.</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/_status/healthz</span></td><td>—</td><td class="f-desc"><code>&#123; status: 'ok' &#125;</code></td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/_status/readyz</span></td><td>—</td><td class="f-desc"><code>&#123; status: 'ready' &#125;</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Sandbox server</h3>
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>Body</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">POST</span></td><td><span class="f-val">/api/sandbox/start</span></td><td>—</td><td class="f-desc"><code>201 &#123; message, sandboxId, previewUrl &#125;</code></td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/sandbox/health</span></td><td>—</td><td class="f-desc"><code>200 &#123; message, status &#125;</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>AI orchestration service</h3>
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>Body</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">POST</span></td><td><span class="f-val">/api/ai/invoke</span></td><td class="f-desc"><code>&#123; message, projectId &#125;</code></td><td class="f-desc"><code>200 text/event-stream</code> (SSE)</td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/api/status/healthz</span></td><td>—</td><td class="f-desc"><code>&#123; status: 'ok' &#125;</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>SSE format: each line is either an activity string (<code>"Reading files...src/App.jsx\n"</code>) or the final AI response text. The stream ends with <code>res.end()</code>.</p>
+
+  <h3>Sandbox agent (per-sandbox, via {id}.agent.localhost)</h3>
+  <table class="flag-table">
+    <thead><tr><th>Method</th><th>Path</th><th>Body / Query</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/list-files</span></td><td>—</td><td class="f-desc"><code>200 &#123; files: string[] &#125;</code></td></tr>
+      <tr><td><span class="f-name">GET</span></td><td><span class="f-val">/read-files</span></td><td><code>?files=a,b</code></td><td class="f-desc"><code>200 &#123; files: [&#123; path: content &#125;] &#125;</code></td></tr>
+      <tr><td><span class="f-name">PATCH</span></td><td><span class="f-val">/update-files</span></td><td class="f-desc"><code>&#123; updates: [&#123; file, content &#125;] &#125;</code></td><td class="f-desc"><code>200 &#123; results &#125;</code></td></tr>
+      <tr><td><span class="f-name">POST</span></td><td><span class="f-val">/create-files</span></td><td class="f-desc"><code>&#123; files: [&#123; file, content &#125;] &#125;</code></td><td class="f-desc"><code>200 &#123; results &#125;</code></td></tr>
+    </tbody>
+  </table>
+
+  <h4>Socket.IO events (same port)</h4>
+  <table class="flag-table">
+    <thead><tr><th>Event</th><th>Direction</th><th>Payload</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">terminal-output</span></td><td>Server → Client</td><td>Raw PTY data (string)</td></tr>
+      <tr><td><span class="f-name">terminal-input</span></td><td>Client → Server</td><td>Keystrokes (string)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 11 CI/CD ─── -->
+<section class="section" id="cicd">
+  <div class="section-header">
+    <div class="section-num-big">11</div>
+    <div class="section-title-block">
+      <div class="section-title">CI/CD pipeline</div>
+    </div>
+  </div>
+
+  <h3>skaffold dev</h3>
+  <p>Skaffold (<code>skaffold.yml</code>) is the only build/deploy orchestrator. It:</p>
+  <ul>
+    <li>Builds Docker images for all 7 services using <code>sha256</code> tag policy</li>
+    <li>Enables file sync for <code>src/**</code> in <code>ai-orchestration</code>, <code>auth</code>, and <code>notification</code> (hot reload without image rebuild)</li>
+    <li>Applies all manifests in the <code>k8s/</code> directory</li>
+  </ul>
+
+  <h3>Proposed GitHub Actions pipeline</h3>
+  <div class="scale-diagram">
+<span class="hi">Pull Request</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+<span class="green">Lint &amp; format</span> → <span class="green">unit / integration tests</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+<span class="hi">Docker build (all 7 images)</span> → push to GHCR / DockerHub<br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+<span class="green">Deploy to Dev</span> → smoke tests<br>
+&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+<span class="hi">Manual approval</span> → <span class="green">Staging</span> → <span class="green">Production</span>
+  </div>
+
+  <h3>Environment promotion</h3>
+  <table class="compare">
+    <thead><tr><th>Environment</th><th>Trigger</th><th>Cluster</th></tr></thead>
+    <tbody>
+      <tr><td class="row-label">Dev</td><td class="local-val">Push to <code>main</code></td><td class="eks-val">Local / dev cluster</td></tr>
+      <tr><td class="row-label">Staging</td><td class="local-val">Manual approval after dev smoke tests</td><td class="eks-val">Staging cluster</td></tr>
+      <tr><td class="row-label">Production</td><td class="local-val">Manual approval after staging sign-off</td><td class="eks-val">Production cluster</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <div class="note-icon">💡</div>
+    <p>Production secrets should come from HashiCorp Vault or AWS Secrets Manager — never from GitHub Secrets at that tier.</p>
+  </div>
+</section>
+
+<!-- ─── 12 SECURITY ─── -->
+<section class="section" id="security">
+  <div class="section-header">
+    <div class="section-num-big">12</div>
+    <div class="section-title-block">
+      <div class="section-title">Security considerations</div>
+      <div class="section-subtitle">Where we're solid, where we need to harden</div>
+    </div>
+  </div>
+
+  <h3>Sandbox isolation model</h3>
+  <ul>
+    <li><strong>Pod-level isolation:</strong> each sandbox is its own pod; containers share a network namespace within the pod but are isolated from other pods.</li>
+    <li><strong>No cross-sandbox routing:</strong> the per-sandbox service selector uses unique <code>sandboxId</code>, not a shared label.</li>
+    <li><strong>No host mount:</strong> the <code>emptyDir</code> volume is ephemeral and kernel-managed; it can't escape the pod boundary.</li>
+    <li><strong>Resource limits enforced:</strong> CPU and memory limits cap runaway consumption.</li>
+  </ul>
+
+  <div class="warn">
+    <div class="note-icon">⚠️</div>
+    <p>No <code>securityContext</code> on sandbox containers — no <code>readOnlyRootFilesystem</code>, no <code>runAsNonRoot</code>, no <code>allowPrivilegeEscalation: false</code>. Users have arbitrary terminal access inside the sandbox. Acceptable for a controlled-access dev environment; <strong>must be hardened before public deployment.</strong></p>
+  </div>
+
+  <h3>Authentication &amp; authorization</h3>
+  <table class="compare">
+    <thead><tr><th>Concern</th><th>Today</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td class="row-label">User auth</td><td class="local-val">Google OAuth + JWT cookie</td><td class="eks-val">Enforce JWT on /api/sandbox/start and /api/ai/invoke</td></tr>
+      <tr><td class="row-label">Service-to-service</td><td class="local-val">Plain HTTP within cluster</td><td class="eks-val">mTLS via Istio or cert-manager</td></tr>
+      <tr><td class="row-label">Agent API</td><td class="local-val">No auth — open within cluster</td><td class="eks-val">Shared secret header validated by agent</td></tr>
+      <tr><td class="row-label">K8s API</td><td class="local-val">resource-manager role — pods + services only</td><td class="eks-val">Already correct ✓</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Secret management — critical</h3>
+  <div class="warn">
+    <div class="note-icon">⚠️</div>
+    <p><strong><code>k8s/secrets.yml</code> contains live credentials in plaintext and is committed to the repository.</strong> Remediation steps:</p>
+  </div>
+
+  <ol>
+    <li>Remove <code>k8s/secrets.yml</code> from git history using <code>git filter-repo</code> or BFG Repo Cleaner.</li>
+    <li>Rotate <strong>every</strong> exposed credential: MongoDB, Redis, RabbitMQ, Google OAuth, JWT secret, MistralAI key.</li>
+    <li>Replace with one of:
+      <ul>
+        <li><strong>Bitnami Sealed Secrets</strong> — client-side encryption, ciphertext in git</li>
+        <li><strong>External Secrets Operator</strong> — pulls from AWS Secrets Manager / Vault at deploy time</li>
+        <li><strong>SOPS + age</strong> — encrypt the secrets file, decrypt in CI</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h3>Input validation</h3>
+  <ul>
+    <li>AI agent accepts arbitrary user prompts. <strong>No prompt injection guard or content filter</strong> at the API boundary.</li>
+    <li>File paths in the agent REST API are joined with <code>path.join(WORKING_DIR, file)</code> — prevents traversal above <code>/workspace</code> on POSIX.</li>
+    <li><strong>No rate limiting</strong> on <code>/api/ai/invoke</code> or <code>/api/sandbox/start</code>.</li>
+  </ul>
+
+  <h3>Network policies</h3>
+  <div class="note">
+    <div class="note-icon">💡</div>
+    <p>No NetworkPolicy resources today. Recommended: allow sandbox pods to receive only from router-service and ai-service; deny all egress except kube-dns; isolate notification service to RabbitMQ inbound only.</p>
+  </div>
+</section>
+
+<!-- ─── 13 OBSERVABILITY ─── -->
+<section class="section" id="observability">
+  <div class="section-header">
+    <div class="section-num-big">13</div>
+    <div class="section-title-block">
+      <div class="section-title">Observability</div>
+      <div class="section-subtitle">Logs, metrics, traces, alerts, probes</div>
+    </div>
+  </div>
+
+  <h3>Logging</h3>
+  <p>All services use <code>morgan</code> HTTP request logging in <code>dev</code> format. Application logs go to stdout/stderr and are collected by the Kubernetes node log driver.</p>
+
+  <p><strong>Gaps:</strong> no structured JSON logging, no correlation IDs, no centralized log aggregation. Recommended: Fluent Bit → OpenSearch → Kibana, or Loki + Grafana.</p>
+
+  <h3>Metrics &amp; monitoring</h3>
+  <div class="note">
+    <div class="note-icon">💡</div>
+    <p>No Prometheus metrics today. Add <code>prom-client</code> to each service, expose <code>/metrics</code>. Instrument HTTP request rate, latency histograms, active sandbox count, Redis TTL operations, agent invocation count + duration. Deploy via kube-prometheus-stack.</p>
+  </div>
+
+  <h3>Tracing</h3>
+  <p>No distributed tracing implemented. Suggested: OpenTelemetry SDK in each service, exporting to Jaeger or Tempo. Key traces to capture: sandbox creation end-to-end, AI agent tool-call chain.</p>
+
+  <h3>Alerting</h3>
+  <p>No alerting rules. Recommended Prometheus alerts:</p>
+  <ul>
+    <li>Sandbox pod crash loop (<code>kube_pod_container_status_restarts_total &gt; 5 in 5m</code>)</li>
+    <li>Redis connection errors in sandbox-server or router</li>
+    <li>AI invocation error rate &gt; 10% in 5m</li>
+    <li>No healthy replicas for auth or ai-orchestration</li>
+  </ul>
+
+  <h3>Health probes</h3>
+  <table class="flag-table">
+    <thead><tr><th>Service</th><th>Liveness</th><th>Readiness</th><th>Delay (live / ready)</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">auth</span></td><td><span class="f-val">/_status/healthz</span></td><td><span class="f-val">/_status/healthz</span></td><td class="f-desc">90s / 30s</td></tr>
+      <tr><td><span class="f-name">ai-orchestration</span></td><td><span class="f-val">/api/status/healthz</span></td><td><span class="f-val">/api/status/healthz</span></td><td class="f-desc">90s / 30s</td></tr>
+      <tr><td><span class="f-name">sandbox-server</span></td><td><span class="f-val">/api/sandbox/health</span></td><td><span class="f-val">/api/sandbox/health</span></td><td class="f-desc">90s / 30s</td></tr>
+      <tr><td><span class="f-name">router</span></td><td><span class="f-val">/api/status/healthz</span></td><td><span class="f-val">/api/status/readyz</span></td><td class="f-desc">90s / 30s</td></tr>
+      <tr><td><span class="f-name">notification</span></td><td><span class="f-val">/_status/healthz</span></td><td><span class="f-val">/_status/healthz</span></td><td class="f-desc">90s / 30s</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 14 ROADMAP ─── -->
+<section class="section" id="roadmap">
+  <div class="section-header">
+    <div class="section-num-big">14</div>
+    <div class="section-title-block">
+      <div class="section-title">Roadmap &amp; known limitations</div>
+      <div class="section-subtitle">What's broken, what's missing, what's planned</div>
+    </div>
+  </div>
+
+  <h3>Bugs fixed during development</h3>
+  <table class="flag-table">
+    <thead><tr><th>#</th><th>Bug</th><th>Root cause</th><th>Fix location</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="f-desc">Preview iframe kept reloading</td><td class="f-desc">Vite <code>watch</code> at wrong nesting level; missing <code>hmr.clientPort</code></td><td><code>sandbox/template/vite.config.js</code></td></tr>
+      <tr><td>2</td><td class="f-desc">Router crashed on WS upgrade</td><td class="f-desc"><code>http-proxy-middleware</code> v4 removed <code>.upgrade()</code></td><td><code>sandbox/router/src/app.js</code> — replaced with <code>httpxy</code></td></tr>
+      <tr><td>3</td><td class="f-desc">Invalid WS frame header</td><td class="f-desc">Double upgrade handler (hpm + manual)</td><td>Removed <code>ws: true</code> from <code>createProxyMiddleware</code></td></tr>
+      <tr><td>4</td><td class="f-desc">CORS errors on agent API</td><td class="f-desc">No CORS middleware</td><td><code>sandbox/agent/src/app.js</code> — added <code>cors</code></td></tr>
+      <tr><td>5</td><td class="f-desc">Wrong pod selected by service</td><td class="f-desc">Selector was <code>app: sandbox</code> matching all pods</td><td>Changed to <code>sandboxId: {id}</code></td></tr>
+      <tr><td>6</td><td class="f-desc">Sticky session cookie not working</td><td class="f-desc">Missing <code>path: "/"</code> on ingress cookie</td><td><code>k8s/ingress.yml</code></td></tr>
+      <tr><td>7</td><td class="f-desc">AI chat never delivered final response</td><td class="f-desc"><code>res.json()</code> called after SSE headers sent</td><td><code>ai-orchestration/src/routes/agent.routes.js</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Open known issues</h3>
+  <table class="flag-table">
+    <thead><tr><th>#</th><th>Issue</th><th>Impact</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="f-desc"><code>k8s/secrets.yml</code> in repo with plaintext creds</td><td class="f-desc"><strong>Critical</strong> — remediate before any public exposure</td></tr>
+      <tr><td>2</td><td class="f-desc"><code>MISTRAL_API_KEY</code> (secret) vs <code>MISTRALAI_API_KEY</code> (env in code) mismatch</td><td class="f-desc">AI service won't get the key in cluster — runtime error on invocation</td></tr>
+      <tr><td>3</td><td class="f-desc">No JWT enforcement on <code>/api/sandbox/start</code> or <code>/api/ai/invoke</code></td><td class="f-desc">Anyone can spin up sandboxes or invoke AI</td></tr>
+      <tr><td>4</td><td class="f-desc">Sandbox pods have no <code>securityContext</code></td><td class="f-desc">Containers run as root; no privilege guard</td></tr>
+      <tr><td>5</td><td class="f-desc">No rate limiting on AI / sandbox creation</td><td class="f-desc">Potential resource exhaustion</td></tr>
+      <tr><td>6</td><td class="f-desc">All services use <code>nodemon</code> in production images</td><td class="f-desc">Overhead + not appropriate for prod</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Technical debt</h3>
+  <ul>
+    <li>No test suite for any service</li>
+    <li>All Dockerfiles use <code>npm run dev</code> in <code>CMD</code> — production should use <code>node server.js</code></li>
+    <li>No Helm chart — all manifests are raw YAML</li>
+    <li>No HPA configured</li>
+    <li>No NetworkPolicy resources</li>
+    <li>No persistent sandbox storage (user can't resume after TTL expiry)</li>
+    <li>Frontend UI labels AI as "Powered by Gemini" but the actual model is <code>mistral-large-latest</code></li>
+  </ul>
+
+  <h3>Planned features</h3>
+  <table class="flag-table">
+    <thead><tr><th>Feature</th><th>Priority</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">Multi-language sandboxes</span></td><td><span class="f-val">High</span></td><td class="f-desc">Python (FastAPI), Node (Express), Go templates alongside React/Vite.</td></tr>
+      <tr><td><span class="f-name">Sandbox persistence</span></td><td><span class="f-val">High</span></td><td class="f-desc">PVC or object storage so users can resume sessions.</td></tr>
+      <tr><td><span class="f-name">JWT auth enforcement</span></td><td><span class="f-val">High</span></td><td class="f-desc">Require valid JWT on sandbox + AI endpoints.</td></tr>
+      <tr><td><span class="f-name">Collaborative editing</span></td><td><span class="f-val">Medium</span></td><td class="f-desc">Multiple users in one sandbox via CRDT (Yjs).</td></tr>
+      <tr><td><span class="f-name">Multi-turn AI context</span></td><td><span class="f-val">Medium</span></td><td class="f-desc">Thread conversation history across invocations.</td></tr>
+      <tr><td><span class="f-name">AI edit history / undo</span></td><td><span class="f-val">Medium</span></td><td class="f-desc">Store each agent edit as a diff; allow rollback.</td></tr>
+      <tr><td><span class="f-name">Package install UI</span></td><td><span class="f-val">Medium</span></td><td class="f-desc">Button to run <code>npm install &lt;pkg&gt;</code> in the sandbox terminal.</td></tr>
+      <tr><td><span class="f-name">Template library</span></td><td><span class="f-val">Low</span></td><td class="f-desc">Next.js, vanilla JS, TypeScript, Tailwind, etc.</td></tr>
+      <tr><td><span class="f-name">Team / org workspaces</span></td><td><span class="f-val">Low</span></td><td class="f-desc">Shared libraries, org-level billing.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 15 CONTRIBUTING ─── -->
+<section class="section" id="contributing">
+  <div class="section-header">
+    <div class="section-num-big">15</div>
+    <div class="section-title-block">
+      <div class="section-title">Contributing guide</div>
+      <div class="section-subtitle">Branch names, PR process, code style, commit format</div>
+    </div>
+  </div>
+
+  <h3>Branch naming</h3>
+  <table class="flag-table">
+    <thead><tr><th>Pattern</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><span class="f-name">feat/&lt;desc&gt;</span></td><td class="f-desc">New features</td></tr>
+      <tr><td><span class="f-name">fix/&lt;desc&gt;</span></td><td class="f-desc">Bug fixes</td></tr>
+      <tr><td><span class="f-name">chore/&lt;desc&gt;</span></td><td class="f-desc">Tooling, deps, config (no production code change)</td></tr>
+      <tr><td><span class="f-name">docs/&lt;desc&gt;</span></td><td class="f-desc">Documentation only</td></tr>
+      <tr><td><span class="f-name">refactor/&lt;desc&gt;</span></td><td class="f-desc">Code restructuring with no behavior change</td></tr>
+    </tbody>
+  </table>
+
+  <p>Examples: <code>feat/sandbox-persistence</code>, <code>fix/ai-env-var-mismatch</code></p>
+
+  <h3>Pull request process</h3>
+  <ol>
+    <li>Branch from <code>main</code>. Rebase (don't merge) before opening the PR.</li>
+    <li>Title format: <code>&lt;type&gt;(&lt;scope&gt;): &lt;subject&gt;</code> — e.g. <code>fix(ai): correct MISTRAL_API_KEY env var name</code></li>
+    <li>PR description must include: <strong>What</strong> changed and <strong>why</strong>, link to related issue, how to test locally.</li>
+    <li>All CI checks must pass.</li>
+    <li>Require at least one reviewer approval before merge.</li>
+  </ol>
+
+  <h3>Review checklist</h3>
+  <div class="concept">
+    <div class="concept-label">Before approving a PR</div>
+    <p>• No secrets or credentials in code or manifests<br>
+       • No <code>console.log</code> left in production paths<br>
+       • New endpoints have at least a basic integration test<br>
+       • K8s manifests include resource requests/limits<br>
+       • Health probes updated if new service or port added<br>
+       • This documentation is updated if architecture changed</p>
+  </div>
+
+  <h3>Code style</h3>
+  <ul>
+    <li>All services: ESLint with the project default config (<code>eslint.config.js</code>).</li>
+    <li>Frontend: React-specific rules — <code>eslint-plugin-react-hooks</code>, <code>eslint-plugin-react-refresh</code>.</li>
+    <li>All Node services use <code>"type": "module"</code> — use <code>import</code>/<code>export</code>, not <code>require</code>.</li>
+    <li>Run <code>npm run lint</code> in each changed service before committing.</li>
+  </ul>
+
+  <h3>Commit message convention</h3>
+  <p>Conventional Commits:</p>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">Format</span></div>
+<pre>&lt;type&gt;(&lt;scope&gt;): &lt;subject&gt;
+
+[optional body]
+
+[optional footer: Co-Authored-By, Fixes #issue]</pre>
+  </div>
+
+  <p>Types: <code>feat</code>, <code>fix</code>, <code>chore</code>, <code>docs</code>, <code>refactor</code>, <code>test</code>, <code>perf</code>.</p>
+</section>
+
+<!-- ─── 16 LICENSE ─── -->
+<section class="section" id="license">
+  <div class="section-header">
+    <div class="section-num-big">16</div>
+    <div class="section-title-block">
+      <div class="section-title">License</div>
+      <div class="section-subtitle">ISC</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-label">LICENSE</span></div>
+<pre>Copyright (c) 2025 codeSpace contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</pre>
+  </div>
+</section>
+
+<footer>
+  <span>codeSpace · Engineering Documentation</span>
+  <span>Node 20 · Kubernetes 1.28+ · MistralAI mistral-large-latest</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const wrap = btn.closest('.code-wrap');
+  const pre = wrap.querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.innerText;
+    btn.innerText = 'copied';
+    setTimeout(() => btn.innerText = original, 1500);
+  });
+}
+
+// Active nav item on scroll
+const sections = document.querySelectorAll('.section, .hero');
+const navLinks = document.querySelectorAll('nav a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
