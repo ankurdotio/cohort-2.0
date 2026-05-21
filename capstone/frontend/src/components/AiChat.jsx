@@ -117,6 +117,7 @@ export default function AiChat({ sandboxId, onFilesChanged }) {
       const response = await fetch('/api/ai/invoke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ message: text, projectId: sandboxId })
       })
 
