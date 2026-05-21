@@ -15,7 +15,7 @@ spec:
         app:  ai-server
     spec:
       containers:
-      - image:  ai-orchestration
+      - image:  329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/ai-orchestration
         name:  ai-server
         resources:
           requests:

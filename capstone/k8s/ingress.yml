@@ -11,12 +11,12 @@ metadata:
     
     # Time in seconds to establish a connection to the pod
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "6000"
-
+  
     nginx.ingress.kubernetes.io/affinity: "cookie"
     nginx.ingress.kubernetes.io/session-cookie-name: "route"
     nginx.ingress.kubernetes.io/session-cookie-path: "/"
     nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: "http://localhost:5173"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "http://www.cryboy.in"
     nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
     nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS, DELETE"
   labels:
@@ -54,7 +54,7 @@ spec:
               number: 80
 
 
-  - host: "*.preview.localhost"
+  - host: "*.preview.cryboy.in"
     http:
       paths:
       - pathType: Prefix
@@ -66,7 +66,7 @@ spec:
               number: 80
 
 
-  - host: "*.agent.localhost"
+  - host: "*.agent.cryboy.in"
     http:
       paths:
       - pathType: Prefix
