@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jest & Testing — Sheryians Coding School</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:ital,wght@0,300;0,600;0,700;0,900;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:       #0E0F14;
+  --paper:     #F5F2EB;
+  --paper2:    #EDE9DF;
+  --paper3:    #E4DFD3;
+  --rule:      #D4CEBC;
+  --muted:     #6B6455;
+  --accent:    #C84B1F;
+  --accent2:   #1A6B4A;
+  --accent3:   #1B4587;
+  --gold:      #B8860B;
+  --code-bg:   #1A1C24;
+  --code-text: #E2DCCC;
+  --flag-c:    #5BA4CF;
+  --val-c:     #F4A261;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--paper); color: var(--ink); font-family: 'DM Sans', sans-serif; font-size: 14.5px; line-height: 1.7; }
+body::before {
+  content: 'SHERYIANS CODING SCHOOL';
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-family: 'IBM Plex Mono', monospace; font-size: 42px; font-weight: 600;
+  color: rgba(200,75,31,0.045); white-space: nowrap; pointer-events: none; z-index: 0; letter-spacing: 0.12em;
+}
+.layout { display: flex; min-height: 100vh; }
+nav { width: 260px; flex-shrink: 0; background: var(--ink); position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 32px 0 40px; z-index: 10; }
+.nav-brand { padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 20px; }
+.nav-brand .logo { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: white; }
+.nav-brand .logo span { color: var(--accent); }
+.nav-brand .sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.06em; margin-top: 4px; }
+.nav-group-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase; padding: 0 24px; margin: 16px 0 6px; }
+nav a { display: flex; align-items: center; gap: 10px; padding: 9px 24px; font-family: 'DM Sans', sans-serif; font-size: 12.5px; color: rgba(255,255,255,0.5); text-decoration: none; border-left: 2px solid transparent; transition: all 0.15s; }
+nav a:hover { color: white; background: rgba(255,255,255,0.04); }
+nav a.active { color: white; border-left-color: var(--accent); background: rgba(200,75,31,0.08); }
+.nav-num { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: rgba(255,255,255,0.08); font-family: 'IBM Plex Mono', monospace; font-size: 9px; border-radius: 4px; flex-shrink: 0; transition: all 0.15s; }
+nav a:hover .nav-num, nav a.active .nav-num { background: var(--accent); color: white; }
+main { flex: 1; max-width: calc(99% - 260px); padding: 56px 56px 80px; position: relative; z-index: 1; }
+.hero { margin-bottom: 64px; padding-bottom: 40px; border-bottom: 1px solid var(--rule); }
+.hero-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 14px; }
+.hero h1 { font-family: 'Fraunces', serif; font-size: clamp(36px, 5vw, 58px); font-weight: 900; color: var(--ink); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px; }
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero-desc { font-family: 'DM Sans', sans-serif; font-size: 16px; color: var(--muted); max-width: 560px; line-height: 1.65; margin-bottom: 20px; }
+.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.hero-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); border: 1px solid var(--rule); border-radius: 20px; padding: 3px 12px; }
+.section { margin-bottom: 72px; animation: fadeUp 0.4s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.section-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px; }
+.section-num-big { font-family: 'Fraunces', serif; font-size: 48px; font-weight: 900; color: var(--rule); line-height: 1; user-select: none; flex-shrink: 0; }
+.section-title { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+.section-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--muted); margin-top: 4px; }
+h3 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: var(--ink); margin: 28px 0 12px; }
+h4 { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 20px 0 8px; }
+p { color: #2A2720; margin-bottom: 12px; line-height: 1.7; }
+strong { font-weight: 500; color: var(--ink); }
+.concept { background: var(--paper2); border-left: 3px solid var(--accent3); border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 16px 0; }
+.concept-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--accent3); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+.concept p { font-size: 14px; line-height: 1.65; margin-bottom: 0; }
+.note { display: flex; gap: 12px; background: #FEF9EC; border: 1px solid #EDD97A; border-radius: 8px; padding: 12px 14px; margin: 16px 0; }
+.note p { font-size: 13px; color: #5C4A00; margin-bottom: 0; }
+.note p strong { color: #3D3000; }
+.note-icon { flex-shrink: 0; font-size: 15px; }
+.warn { display: flex; gap: 12px; background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 12px 14px; margin: 16px 0; }
+.warn p { font-size: 13px; color: #7F1D1D; margin-bottom: 0; }
+.step-label { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; color: white; background: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 4px; margin: 16px 0 8px; }
+.step-label.green { background: var(--accent2); }
+.step-label.blue  { background: var(--accent3); }
+.step-label.gold  { background: var(--gold); }
+.code-wrap { margin: 16px 0; border-radius: 8px; overflow: hidden; }
+.code-header { display: flex; align-items: center; justify-content: space-between; background: #13141B; padding: 8px 14px; }
+.code-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.08em; }
+.copy-btn { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); background: none; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 2px 8px; cursor: pointer; transition: all 0.15s; }
+.copy-btn:hover { color: white; border-color: rgba(255,255,255,0.3); }
+.code-wrap pre { background: var(--code-bg); color: var(--code-text); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.8; padding: 16px 18px; overflow-x: auto; margin: 0; }
+.c-cmd     { color: #87CEEB; font-weight: bold; }
+.c-flag    { color: #5BA4CF; }
+.c-val     { color: #F4A261; }
+.c-str     { color: #98C379; }
+.c-comment { color: rgba(255,255,255,0.28); font-style: italic; }
+.c-key     { color: #C678DD; }
+.c-pipe    { color: #E5C07B; }
+code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent); background: var(--paper3); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px; }
+.flag-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.flag-table th { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; background: var(--paper3); padding: 8px 12px; text-align: left; font-weight: 400; }
+.flag-table td { padding: 9px 12px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.flag-table tr:hover td { background: var(--paper2); }
+.f-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--flag-c); }
+.f-val  { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--val-c); }
+.f-desc { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); }
+.f-why  { font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--muted); }
+.compare { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.compare th { background: var(--ink); color: white; font-size: 13px; font-weight: 600; padding: 10px 14px; text-align: left; }
+.compare th:first-child { border-radius: 8px 0 0 0; }
+.compare th:last-child  { border-radius: 0 8px 0 0; }
+.compare td { padding: 10px 14px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.compare tr:hover td { background: var(--paper2); }
+.row-label { font-weight: 600; color: var(--ink); font-size: 13px; }
+.local-val { color: var(--muted); }
+.eks-val   { color: var(--accent2); font-weight: 500; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.data-card { background: var(--paper2); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; }
+.data-card-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.data-card-title { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.data-card p { font-size: 13px; color: var(--muted); margin-bottom: 0; }
+.flow { margin: 16px 0; }
+.flow-step { display: flex; }
+.flow-line { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
+.flow-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 4px; z-index: 1; }
+.flow-connector { width: 2px; background: var(--rule); flex: 1; min-height: 20px; }
+.flow-content { flex: 1; padding: 0 0 18px 10px; }
+.flow-title  { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+.flow-detail { font-family: 'DM Sans', sans-serif; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.scale-diagram { background: var(--paper2); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 20px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 2; margin: 16px 0; color: var(--muted); }
+.scale-diagram .hi    { color: var(--ink); font-weight: bold; }
+.scale-diagram .green { color: var(--accent2); }
+.scale-diagram .red   { color: var(--accent); }
+
+/* Tool card for frontend section */
+.tool-card { border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 16px 0; }
+.tool-card-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--rule); background: var(--paper2); }
+.tool-card-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 700; color: var(--ink); }
+.tool-card-badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; color: white; padding: 3px 9px; border-radius: 4px; }
+.tool-card-body { padding: 14px 16px; }
+.tool-card-body p { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.tool-card-body ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.tool-card-body ul li { font-size: 13px; color: #2A2720; padding-left: 16px; position: relative; }
+.tool-card-body ul li::before { content: '→'; position: absolute; left: 0; color: var(--accent); font-size: 11px; top: 2px; }
+.tool-card-use { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); border-top: 1px solid var(--rule); padding: 10px 16px; background: var(--paper); }
+
+hr.divider { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+footer { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid var(--rule); padding: 20px 56px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+@media (max-width: 768px) {
+  nav { display: none; }
+  main { padding: 32px 24px 60px; max-width: 100%; }
+  .two-col { grid-template-columns: 1fr; }
+  footer { padding: 16px 24px; flex-direction: column; gap: 6px; text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav>
+  <div class="nav-brand">
+    <div class="logo">Jest<span>.</span>Test</div>
+    <div class="sub">Sheryians Coding School</div>
+  </div>
+
+  <div class="nav-group-label">Fundamentals</div>
+  <a href="#types" class="active"><span class="nav-num">1</span>Types of Testing</a>
+  <a href="#jest-intro"><span class="nav-num">2</span>What is Jest?</a>
+  <a href="#anatomy"><span class="nav-num">3</span>Anatomy of a Test</a>
+
+  <div class="nav-group-label">Backend Testing</div>
+  <a href="#route-testing"><span class="nav-num">4</span>Route Testing (Supertest)</a>
+  <a href="#mongo-testing"><span class="nav-num">5</span>MongoDB Testing</a>
+  <a href="#mocking"><span class="nav-num">6</span>Mocking</a>
+
+  <div class="nav-group-label">Frontend Testing</div>
+  <a href="#frontend-tools"><span class="nav-num">7</span>Frontend Tool Landscape</a>
+  <a href="#mental-model"><span class="nav-num">8</span>When to Use What</a>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Sheryians Coding School · Backend Module</div>
+    <h1>Jest & <em>Software</em><br>Testing</h1>
+    <p class="hero-desc">Backend testing with Jest, Supertest, and mongodb-memory-server — plus a clear map of the modern frontend testing landscape so you know exactly which tool to reach for.</p>
+    <div class="hero-tags">
+      <span class="hero-tag">Jest</span>
+      <span class="hero-tag">Supertest</span>
+      <span class="hero-tag">mongodb-memory-server</span>
+      <span class="hero-tag">Vitest</span>
+      <span class="hero-tag">Playwright</span>
+      <span class="hero-tag">React Testing Library</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 — Types of Testing -->
+  <section class="section" id="types">
+    <div class="section-header">
+      <div class="section-num-big">01</div>
+      <div class="section-title-block">
+        <div class="section-title">Types of Testing</div>
+        <div class="section-subtitle">Four categories — know what you're writing before you write it</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="data-card">
+        <div class="data-card-label">Type 1</div>
+        <div class="data-card-title">Unit Testing</div>
+        <p>Tests a single function or component in complete isolation. No database, no network, no dependencies. Fast and precise. <em>Does this function return the right value?</em></p>
+      </div>
+      <div class="data-card">
+        <div class="data-card-label">Type 2</div>
+        <div class="data-card-title">Integration Testing</div>
+        <p>Tests how multiple units work together. Example: does the route handler correctly call the service, which correctly calls the DB model? <em>Do the pieces fit?</em></p>
+      </div>
+      <div class="data-card">
+        <div class="data-card-label">Type 3</div>
+        <div class="data-card-title">End-to-End (E2E) Testing</div>
+        <p>Validates the full user flow — from the UI, through the API, down to the database and back. Runs in a real browser. <em>Does the whole thing work for the user?</em></p>
+      </div>
+      <div class="data-card">
+        <div class="data-card-label">Type 4</div>
+        <div class="data-card-title">Regression Testing</div>
+        <p>Re-runs existing tests after a code change to make sure nothing that was working is now broken. <em>Did my new feature break something old?</em></p>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">The Testing Pyramid</div>
+      <p>Write <strong>many unit tests</strong> (fast, cheap, precise), <strong>some integration tests</strong> (medium speed, catches wiring bugs), and <strong>few E2E tests</strong> (slow, but proves the full user journey works). Most teams run unit + integration tests on every commit and E2E tests before deployment.</p>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 2 — What is Jest -->
+  <section class="section" id="jest-intro">
+    <div class="section-header">
+      <div class="section-num-big">02</div>
+      <div class="section-title-block">
+        <div class="section-title">What is Jest?</div>
+        <div class="section-subtitle">The standard JavaScript testing framework — batteries included</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p><strong>Jest</strong> is a JavaScript testing framework built by Meta. It is zero-configuration, meaning it works out of the box without needing to set up a test runner, assertion library, or mocking library separately — all three are built in. It works on both the Node.js backend and React frontend of a MERN stack.</p>
+    </div>
+
+    <table class="flag-table">
+      <thead>
+        <tr><th>Feature</th><th>What it means for you</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">Zero config</span></td>
+          <td class="f-desc">Run <code>npx jest</code> and it finds all <code>*.test.js</code> files automatically. No config file needed to get started.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Built-in assertions</span></td>
+          <td class="f-desc"><code>expect(value).toBe()</code>, <code>.toEqual()</code>, <code>.toContain()</code> — no separate assertion library needed.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Built-in mocking</span></td>
+          <td class="f-desc"><code>jest.fn()</code>, <code>jest.mock()</code> — replace real dependencies with controlled fakes without extra packages.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Code coverage</span></td>
+          <td class="f-desc">Run <code>jest --coverage</code> to see exactly which lines of your code are tested and which aren't.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Watch mode</span></td>
+          <td class="f-desc"><code>jest --watch</code> re-runs tests automatically every time you save a file. Instant feedback loop.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="step-label">Install</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Terminal</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">npm</span> <span class="c-flag">install</span> <span class="c-flag">--save-dev</span> <span class="c-val">jest</span>
+
+<span class="c-comment"># Add to package.json scripts</span>
+<span class="c-comment"># "test": "jest"</span>
+<span class="c-comment"># "test:watch": "jest --watch"</span>
+<span class="c-comment"># "test:coverage": "jest --coverage"</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>If you're using <strong>ES Modules</strong> (<code>import/export</code>) in Node.js, add <code>"transform": {}</code> in jest config and use <code>NODE_OPTIONS=--experimental-vm-modules npx jest</code>, or switch to CommonJS (<code>require</code>) for test files to avoid the ESM/Jest compatibility friction.</p>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 3 — Anatomy -->
+  <section class="section" id="anatomy">
+    <div class="section-header">
+      <div class="section-num-big">03</div>
+      <div class="section-title-block">
+        <div class="section-title">Anatomy of a Jest Test</div>
+        <div class="section-subtitle">describe, test, expect — the three building blocks of every test you'll write</div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">utils.test.js — full anatomy</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-comment">// describe() — groups related tests together</span>
+<span class="c-cmd">describe</span>(<span class="c-str">'calculateDiscount()'</span>, () => {
+
+  <span class="c-comment">// test() (alias: it()) — one individual test case</span>
+  <span class="c-cmd">test</span>(<span class="c-str">'applies 10% discount correctly'</span>, () => {
+    <span class="c-comment">// Arrange</span>
+    <span class="c-cmd">const</span> price = <span class="c-val">200</span>;
+
+    <span class="c-comment">// Act</span>
+    <span class="c-cmd">const</span> result = <span class="c-cmd">calculateDiscount</span>(price, <span class="c-val">10</span>);
+
+    <span class="c-comment">// Assert</span>
+    <span class="c-cmd">expect</span>(result).<span class="c-cmd">toBe</span>(<span class="c-val">180</span>);
+  });
+
+  <span class="c-cmd">test</span>(<span class="c-str">'throws if discount is above 100'</span>, () => {
+    <span class="c-cmd">expect</span>(() => <span class="c-cmd">calculateDiscount</span>(<span class="c-val">200</span>, <span class="c-val">110</span>)).<span class="c-cmd">toThrow</span>(<span class="c-str">'Invalid discount'</span>);
+  });
+
+});</pre>
+    </div>
+
+    <h3>Common Matchers</h3>
+    <table class="flag-table">
+      <thead>
+        <tr><th>Matcher</th><th>Checks</th><th>Use for</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">.toBe(val)</span></td>
+          <td class="f-desc">Strict equality (<code>===</code>)</td>
+          <td class="f-why">Primitives: numbers, strings, booleans</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">.toEqual(val)</span></td>
+          <td class="f-desc">Deep equality (structure + values)</td>
+          <td class="f-why">Objects, arrays — use this instead of toBe</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">.toBeTruthy()</span></td>
+          <td class="f-desc">Value is truthy</td>
+          <td class="f-why">Checking a value exists without caring about exact value</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">.toContain(item)</span></td>
+          <td class="f-desc">Array includes item / string includes substring</td>
+          <td class="f-why">Checking arrays or error messages</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">.toThrow(msg)</span></td>
+          <td class="f-desc">Function throws an error</td>
+          <td class="f-why">Testing error handling — wrap in arrow function</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">.toHaveBeenCalled()</span></td>
+          <td class="f-desc">A mock function was called</td>
+          <td class="f-why">Checking side effects — did this function get triggered?</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">.toHaveBeenCalledWith(args)</span></td>
+          <td class="f-desc">Mock called with specific arguments</td>
+          <td class="f-why">Checking the right data was passed to a function</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">.resolves / .rejects</span></td>
+          <td class="f-desc">Promise resolves or rejects</td>
+          <td class="f-why">Async tests — <code>await expect(promise).resolves.toBe(...)</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Lifecycle Hooks</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Setup and teardown</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">beforeAll</span>(<span class="c-cmd">async</span> () => {
+  <span class="c-comment">// runs ONCE before all tests in this file</span>
+  <span class="c-comment">// → connect to DB, start server, seed data</span>
+});
+
+<span class="c-cmd">afterAll</span>(<span class="c-cmd">async</span> () => {
+  <span class="c-comment">// runs ONCE after all tests finish</span>
+  <span class="c-comment">// → disconnect DB, close server</span>
+});
+
+<span class="c-cmd">beforeEach</span>(() => {
+  <span class="c-comment">// runs before EACH individual test</span>
+  <span class="c-comment">// → reset mocks, set up fresh state</span>
+});
+
+<span class="c-cmd">afterEach</span>(<span class="c-cmd">async</span> () => {
+  <span class="c-comment">// runs after EACH individual test</span>
+  <span class="c-comment">// → clear DB collections so tests don't pollute each other</span>
+});</pre>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 4 — Route Testing -->
+  <section class="section" id="route-testing">
+    <div class="section-header">
+      <div class="section-num-big">04</div>
+      <div class="section-title-block">
+        <div class="section-title">Route Testing with Supertest</div>
+        <div class="section-subtitle">Test your Express routes without actually running a server</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p><strong>Supertest</strong> lets you send real HTTP requests to your Express app in tests — without binding to a port or running a live server. It imports your Express <code>app</code> directly and simulates GET, POST, PUT, DELETE requests, letting you assert on status codes, response bodies, and headers.</p>
+    </div>
+
+    <div class="step-label">Install</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Terminal</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">npm</span> <span class="c-flag">install</span> <span class="c-flag">--save-dev</span> <span class="c-val">supertest</span></pre>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>Separate your app from your server.</strong> Export the Express <code>app</code> from <code>app.js</code> without calling <code>app.listen()</code>. Call <code>listen()</code> only in <code>server.js</code>. Supertest imports <code>app</code> and handles the connection itself.</p>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">app.js — export without listen</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> express <span class="c-key">from</span> <span class="c-str">'express'</span>;
+<span class="c-cmd">const</span> app = <span class="c-cmd">express</span>();
+app.<span class="c-cmd">use</span>(express.<span class="c-cmd">json</span>());
+app.<span class="c-cmd">use</span>(<span class="c-str">'/api/users'</span>, userRoutes);
+
+<span class="c-key">export default</span> app; <span class="c-comment">// no app.listen() here</span></pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">user.test.js — route test with Supertest</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> request <span class="c-key">from</span> <span class="c-str">'supertest'</span>;
+<span class="c-key">import</span> app     <span class="c-key">from</span> <span class="c-str">'../app.js'</span>;
+
+<span class="c-cmd">describe</span>(<span class="c-str">'GET /api/users/:id'</span>, () => {
+
+  <span class="c-cmd">test</span>(<span class="c-str">'returns user when valid ID given'</span>, <span class="c-cmd">async</span> () => {
+    <span class="c-cmd">const</span> res = <span class="c-cmd">await</span> <span class="c-cmd">request</span>(app)
+      .<span class="c-cmd">get</span>(<span class="c-str">'/api/users/123'</span>)
+      .<span class="c-cmd">set</span>(<span class="c-str">'Authorization'</span>, <span class="c-str">'Bearer test-token'</span>);
+
+    <span class="c-cmd">expect</span>(res.<span class="c-cmd">statusCode</span>).<span class="c-cmd">toBe</span>(<span class="c-val">200</span>);
+    <span class="c-cmd">expect</span>(res.<span class="c-cmd">body</span>).<span class="c-cmd">toHaveProperty</span>(<span class="c-str">'name'</span>);
+    <span class="c-cmd">expect</span>(res.<span class="c-cmd">body</span>.<span class="c-cmd">_id</span>).<span class="c-cmd">toBe</span>(<span class="c-str">'123'</span>);
+  });
+
+  <span class="c-cmd">test</span>(<span class="c-str">'returns 404 when user does not exist'</span>, <span class="c-cmd">async</span> () => {
+    <span class="c-cmd">const</span> res = <span class="c-cmd">await</span> <span class="c-cmd">request</span>(app)
+      .<span class="c-cmd">get</span>(<span class="c-str">'/api/users/nonexistent'</span>);
+
+    <span class="c-cmd">expect</span>(res.<span class="c-cmd">statusCode</span>).<span class="c-cmd">toBe</span>(<span class="c-val">404</span>);
+    <span class="c-cmd">expect</span>(res.<span class="c-cmd">body</span>).<span class="c-cmd">toHaveProperty</span>(<span class="c-str">'error'</span>);
+  });
+
+  <span class="c-cmd">test</span>(<span class="c-str">'returns 401 without auth token'</span>, <span class="c-cmd">async</span> () => {
+    <span class="c-cmd">const</span> res = <span class="c-cmd">await</span> <span class="c-cmd">request</span>(app)
+      .<span class="c-cmd">get</span>(<span class="c-str">'/api/users/123'</span>);
+    <span class="c-comment">// no Authorization header</span>
+
+    <span class="c-cmd">expect</span>(res.<span class="c-cmd">statusCode</span>).<span class="c-cmd">toBe</span>(<span class="c-val">401</span>);
+  });
+
+});</pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Test three things per route:</strong> the happy path (correct data → 200), the not-found case (→ 404), and the unauthorized case (no token → 401). This covers 90% of real-world bugs.</p>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 5 — MongoDB Testing -->
+  <section class="section" id="mongo-testing">
+    <div class="section-header">
+      <div class="section-num-big">05</div>
+      <div class="section-title-block">
+        <div class="section-title">MongoDB Testing</div>
+        <div class="section-subtitle">Never touch your real database in tests — use mongodb-memory-server instead</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p><strong>mongodb-memory-server</strong> spins up a real MongoDB instance entirely in RAM during your test run. It behaves exactly like a real MongoDB database — you can create, save, query, and delete documents using your actual Mongoose models — but it's completely isolated from your development or production data. It auto-destructs when tests finish.</p>
+    </div>
+
+    <div class="step-label">Install</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Terminal</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">npm</span> <span class="c-flag">install</span> <span class="c-flag">--save-dev</span> <span class="c-val">mongodb-memory-server</span></pre>
+    </div>
+
+    <div class="step-label">Step 1 — Create a test DB helper</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">tests/setup/db.js</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> mongoose        <span class="c-key">from</span> <span class="c-str">'mongoose'</span>;
+<span class="c-key">import</span> { MongoMemoryServer } <span class="c-key">from</span> <span class="c-str">'mongodb-memory-server'</span>;
+
+<span class="c-cmd">let</span> mongoServer;
+
+<span class="c-key">export const</span> connect = <span class="c-cmd">async</span> () => {
+  mongoServer = <span class="c-cmd">await</span> MongoMemoryServer.<span class="c-cmd">create</span>();
+  <span class="c-cmd">const</span> uri = mongoServer.<span class="c-cmd">getUri</span>();
+  <span class="c-cmd">await</span> mongoose.<span class="c-cmd">connect</span>(uri);
+};
+
+<span class="c-key">export const</span> disconnect = <span class="c-cmd">async</span> () => {
+  <span class="c-cmd">await</span> mongoose.connection.<span class="c-cmd">dropDatabase</span>();
+  <span class="c-cmd">await</span> mongoose.<span class="c-cmd">disconnect</span>();
+  <span class="c-cmd">await</span> mongoServer.<span class="c-cmd">stop</span>();
+};
+
+<span class="c-key">export const</span> clearCollections = <span class="c-cmd">async</span> () => {
+  <span class="c-cmd">const</span> collections = mongoose.connection.collections;
+  <span class="c-key">for</span> (<span class="c-cmd">const</span> key <span class="c-key">in</span> collections) {
+    <span class="c-cmd">await</span> collections[key].<span class="c-cmd">deleteMany</span>({});
+  }
+};</pre>
+    </div>
+
+    <div class="step-label">Step 2 — Write model tests</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">user.model.test.js</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> { connect, disconnect, clearCollections } <span class="c-key">from</span> <span class="c-str">'./setup/db.js'</span>;
+<span class="c-key">import</span> User <span class="c-key">from</span> <span class="c-str">'../models/User.js'</span>;
+
+<span class="c-cmd">beforeAll</span>(<span class="c-cmd">async</span> () => <span class="c-cmd">await</span> <span class="c-cmd">connect</span>());
+<span class="c-cmd">afterAll</span>(<span class="c-cmd">async</span>  () => <span class="c-cmd">await</span> <span class="c-cmd">disconnect</span>());
+<span class="c-cmd">afterEach</span>(<span class="c-cmd">async</span> () => <span class="c-cmd">await</span> <span class="c-cmd">clearCollections</span>()); <span class="c-comment">// clean slate per test</span>
+
+<span class="c-cmd">describe</span>(<span class="c-str">'User model'</span>, () => {
+
+  <span class="c-cmd">test</span>(<span class="c-str">'creates and saves a user successfully'</span>, <span class="c-cmd">async</span> () => {
+    <span class="c-cmd">const</span> user = <span class="c-cmd">new</span> User({
+      name:  <span class="c-str">'Harshit'</span>,
+      email: <span class="c-str">'harshit@sheryians.com'</span>,
+      password: <span class="c-str">'hashed_password_123'</span>,
+    });
+
+    <span class="c-cmd">const</span> saved = <span class="c-cmd">await</span> user.<span class="c-cmd">save</span>();
+    <span class="c-cmd">expect</span>(saved._id).<span class="c-cmd">toBeDefined</span>();
+    <span class="c-cmd">expect</span>(saved.email).<span class="c-cmd">toBe</span>(<span class="c-str">'harshit@sheryians.com'</span>);
+  });
+
+  <span class="c-cmd">test</span>(<span class="c-str">'fails validation without required email field'</span>, <span class="c-cmd">async</span> () => {
+    <span class="c-cmd">const</span> user = <span class="c-cmd">new</span> User({ name: <span class="c-str">'NoEmail'</span> });
+    <span class="c-cmd">await</span> <span class="c-cmd">expect</span>(user.<span class="c-cmd">save</span>()).<span class="c-cmd">rejects</span>.<span class="c-cmd">toThrow</span>();
+  });
+
+  <span class="c-cmd">test</span>(<span class="c-str">'finds user by email'</span>, <span class="c-cmd">async</span> () => {
+    <span class="c-cmd">await</span> User.<span class="c-cmd">create</span>({ name: <span class="c-str">'Test'</span>, email: <span class="c-str">'find@test.com'</span>, password: <span class="c-str">'pass'</span> });
+
+    <span class="c-cmd">const</span> found = <span class="c-cmd">await</span> User.<span class="c-cmd">findOne</span>({ email: <span class="c-str">'find@test.com'</span> });
+    <span class="c-cmd">expect</span>(found).<span class="c-cmd">toBeTruthy</span>();
+    <span class="c-cmd">expect</span>(found.name).<span class="c-cmd">toBe</span>(<span class="c-str">'Test'</span>);
+  });
+
+});</pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Why <code>afterEach(clearCollections)</code> matters:</strong> Without it, a user created in test 1 is still in the DB when test 2 runs. Tests start depending on each other's data. That's how you get tests that pass individually but fail when run together. Always clean up.</p>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 6 — Mocking -->
+  <section class="section" id="mocking">
+    <div class="section-header">
+      <div class="section-num-big">06</div>
+      <div class="section-title-block">
+        <div class="section-title">Mocking with Jest</div>
+        <div class="section-subtitle">Replace real dependencies with controlled fakes so tests are fast and predictable</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>A <strong>mock</strong> is a fake version of a dependency (a function, a module, an API call) that returns whatever you tell it to. You use mocks when the real dependency is slow (a database), has side effects (sending an email), or is external (a third-party API). Mocks make tests fast, deterministic, and isolated.</p>
+    </div>
+
+    <h3>jest.fn() — Mock a single function</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Mocking a service function</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">const</span> sendEmail = jest.<span class="c-cmd">fn</span>(); <span class="c-comment">// fake function — does nothing by default</span>
+
+sendEmail(<span class="c-str">'user@example.com'</span>);
+
+<span class="c-cmd">expect</span>(sendEmail).<span class="c-cmd">toHaveBeenCalledTimes</span>(<span class="c-val">1</span>);
+<span class="c-cmd">expect</span>(sendEmail).<span class="c-cmd">toHaveBeenCalledWith</span>(<span class="c-str">'user@example.com'</span>);
+
+<span class="c-comment">// Make it return a value</span>
+<span class="c-cmd">const</span> getUser = jest.<span class="c-cmd">fn</span>().<span class="c-cmd">mockResolvedValue</span>({ name: <span class="c-str">'Harshit'</span>, id: <span class="c-val">1</span> });
+<span class="c-cmd">const</span> user = <span class="c-cmd">await</span> <span class="c-cmd">getUser</span>(<span class="c-val">1</span>);
+<span class="c-cmd">expect</span>(user.name).<span class="c-cmd">toBe</span>(<span class="c-str">'Harshit'</span>);</pre>
+    </div>
+
+    <h3>jest.mock() — Mock an entire module</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Mocking a DB service module</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-comment">// Mock the whole userService module</span>
+jest.<span class="c-cmd">mock</span>(<span class="c-str">'../services/userService.js'</span>, () => ({
+  <span class="c-key">findUserById</span>: jest.<span class="c-cmd">fn</span>().<span class="c-cmd">mockResolvedValue</span>({
+    _id: <span class="c-str">'123'</span>,
+    name: <span class="c-str">'Harshit'</span>,
+    email: <span class="c-str">'harshit@sheryians.com'</span>
+  }),
+  <span class="c-key">deleteUser</span>: jest.<span class="c-cmd">fn</span>().<span class="c-cmd">mockResolvedValue</span>({ deleted: <span class="c-val">true</span> }),
+}));
+
+<span class="c-comment">// Now any test that imports userService gets the fake version</span>
+<span class="c-comment">// Real DB is never touched — tests run instantly</span></pre>
+    </div>
+
+    <h3>Spy on a real function without replacing it</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">jest.spyOn()</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> * <span class="c-key">as</span> emailService <span class="c-key">from</span> <span class="c-str">'../services/emailService.js'</span>;
+
+<span class="c-cmd">test</span>(<span class="c-str">'sends welcome email on register'</span>, <span class="c-cmd">async</span> () => {
+  <span class="c-comment">// Watch the real function but stop it from actually sending</span>
+  <span class="c-cmd">const</span> spy = jest.<span class="c-cmd">spyOn</span>(emailService, <span class="c-str">'sendWelcome'</span>)
+    .<span class="c-cmd">mockResolvedValue</span>(<span class="c-val">true</span>);
+
+  <span class="c-cmd">await</span> <span class="c-cmd">request</span>(app).<span class="c-cmd">post</span>(<span class="c-str">'/api/auth/register'</span>).<span class="c-cmd">send</span>({...});
+
+  <span class="c-cmd">expect</span>(spy).<span class="c-cmd">toHaveBeenCalledTimes</span>(<span class="c-val">1</span>);
+  spy.<span class="c-cmd">mockRestore</span>(); <span class="c-comment">// restore original after test</span>
+});</pre>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 7 — Frontend Tools -->
+  <section class="section" id="frontend-tools">
+    <div class="section-header">
+      <div class="section-num-big">07</div>
+      <div class="section-title-block">
+        <div class="section-title">Frontend Testing Landscape</div>
+        <div class="section-subtitle">What the industry uses in 2025 — and why Jest alone isn't enough for React</div>
+      </div>
+    </div>
+
+    <p>The frontend testing world has moved on from plain Jest. Modern React projects — especially Vite-based ones — use a different stack. Here's what each tool is, why it exists, and when you'd use it.</p>
+
+    <div class="tool-card">
+      <div class="tool-card-head">
+        <div class="tool-card-name">Vitest</div>
+        <div class="tool-card-badge" style="background: var(--accent2);">Jest replacement</div>
+      </div>
+      <div class="tool-card-body">
+        <p>The modern replacement for Jest in Vite-based React projects. Natively runs inside Vite — no separate build step, no config fighting. Jest-compatible API so migration is near-zero effort.</p>
+        <ul>
+          <li>Significantly faster than Jest in Vite projects (shares the same transform pipeline)</li>
+          <li>TypeScript support out of the box — no Babel config needed</li>
+          <li>Hot Module Replacement in watch mode — tests re-run in milliseconds as you type</li>
+          <li>Same API as Jest: <code>describe</code>, <code>test</code>, <code>expect</code>, <code>vi.mock()</code></li>
+        </ul>
+      </div>
+      <div class="tool-card-use">Use for: unit tests, hook tests, utility function tests in React + Vite projects</div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-head">
+        <div class="tool-card-name">React Testing Library</div>
+        <div class="tool-card-badge" style="background: var(--accent3);">Component testing</div>
+      </div>
+      <div class="tool-card-body">
+        <p>The standard for testing React components. Its core philosophy: test components the way a real user would — by clicking buttons, typing in inputs, and reading visible text — not by poking at internal state or class names.</p>
+        <ul>
+          <li>Queries by accessibility: <code>getByRole</code>, <code>getByLabelText</code>, <code>getByText</code></li>
+          <li>Forces you to write accessible components as a side effect of writing testable ones</li>
+          <li>Works with both Jest and Vitest — just change the test runner, RTL stays the same</li>
+          <li><code>userEvent</code> simulates real typing, clicking, and form interactions (better than <code>fireEvent</code>)</li>
+        </ul>
+      </div>
+      <div class="tool-card-use">Use for: component behavior tests — does the button work, does the form validate, does the modal open</div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-head">
+        <div class="tool-card-name">Playwright</div>
+        <div class="tool-card-badge" style="background: var(--accent);">E2E testing</div>
+      </div>
+      <div class="tool-card-body">
+        <p>The top choice for end-to-end testing in 2025. Runs tests in real browsers (Chromium, Firefox, WebKit). Built-in auto-waiting eliminates the flaky timing failures that plagued older E2E tools.</p>
+        <ul>
+          <li><strong>codegen</strong> — records your browser clicks and auto-generates test code</li>
+          <li>Runs tests in parallel across multiple browsers simultaneously</li>
+          <li>No manual <code>waitFor</code> calls — Playwright waits for elements automatically</li>
+          <li>Free, open source, Microsoft-backed — no paid tier needed for most teams</li>
+        </ul>
+      </div>
+      <div class="tool-card-use">Use for: full user flow tests — login → dashboard → create item → verify it appears</div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-head">
+        <div class="tool-card-name">Cypress</div>
+        <div class="tool-card-badge" style="background: var(--gold);">E2E alternative</div>
+      </div>
+      <div class="tool-card-body">
+        <p>A popular E2E testing tool known for its excellent developer experience and visual test runner UI. Great for teams new to E2E testing — the time-travel debugger makes failures easy to understand.</p>
+        <ul>
+          <li>Visual test runner shows the browser in real time as tests run</li>
+          <li>Excellent error messages and time-travel debugging</li>
+          <li>Slower than Playwright — tests run sequentially by default</li>
+          <li>Advanced dashboard features (test analytics, parallelization) require a paid plan</li>
+        </ul>
+      </div>
+      <div class="tool-card-use">Use for: teams that prioritize DX and visual debugging over raw speed</div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-head">
+        <div class="tool-card-name">Storybook</div>
+        <div class="tool-card-badge" style="background: var(--muted);">Visual testing</div>
+      </div>
+      <div class="tool-card-body">
+        <p>A tool for building and visually inspecting components in complete isolation from the rest of the app. Not a test runner — it's a component workbench. You see exactly how a component looks in every state.</p>
+        <ul>
+          <li>Build <code>Button</code>, <code>Modal</code>, <code>Card</code> in isolation — no need to navigate the full app</li>
+          <li>Catches visual regressions — a screenshot diff tells you if a button's padding changed</li>
+          <li>Living documentation — designers and developers share the same source of truth</li>
+        </ul>
+      </div>
+      <div class="tool-card-use">Use for: design systems, component libraries, visual appearance testing</div>
+    </div>
+
+    <h3>Playwright vs Cypress — Quick Comparison</h3>
+    <table class="compare">
+      <thead>
+        <tr><th>Feature</th><th>Cypress</th><th>Playwright</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="row-label">Speed</td>
+          <td class="local-val">Sequential by default — slower</td>
+          <td class="eks-val">Parallel by default — significantly faster ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Browser support</td>
+          <td class="local-val">Chrome, Firefox, Edge (no Safari)</td>
+          <td class="eks-val">Chromium, Firefox, WebKit (Safari) ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Auto-waiting</td>
+          <td class="local-val">Partial — some manual waits still needed</td>
+          <td class="eks-val">Built-in everywhere — almost zero flakiness ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Multiple tabs</td>
+          <td class="local-val">Not supported</td>
+          <td class="eks-val">Fully supported ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Test recorder</td>
+          <td class="local-val">Cypress Studio (limited)</td>
+          <td class="eks-val">codegen — excellent, generates clean code ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Pricing</td>
+          <td class="local-val">Free core, paid dashboard for analytics</td>
+          <td class="eks-val">Fully free and open source ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">DX / debugging</td>
+          <td class="eks-val">Excellent — visual runner, time-travel ✓</td>
+          <td class="local-val">Good — trace viewer, but steeper learning curve</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 8 — Mental Model -->
+  <section class="section" id="mental-model">
+    <div class="section-header">
+      <div class="section-num-big">08</div>
+      <div class="section-title-block">
+        <div class="section-title">When to Use What</div>
+        <div class="section-subtitle">The decision map — one question, one tool</div>
+      </div>
+    </div>
+
+    <table class="flag-table">
+      <thead>
+        <tr><th>What you want to test</th><th>Reach for</th><th>Why</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="f-desc">A utility / helper function</td>
+          <td><span class="f-name">Jest / Vitest</span></td>
+          <td class="f-why">Pure logic, no DOM, no browser needed</td>
+        </tr>
+        <tr>
+          <td class="f-desc">An Express route / API endpoint</td>
+          <td><span class="f-name">Jest + Supertest</span></td>
+          <td class="f-why">Simulates HTTP without a real running server</td>
+        </tr>
+        <tr>
+          <td class="f-desc">A Mongoose model / DB operation</td>
+          <td><span class="f-name">Jest + mongodb-memory-server</span></td>
+          <td class="f-why">Real MongoDB behavior, zero risk to real data</td>
+        </tr>
+        <tr>
+          <td class="f-desc">A React component's behavior</td>
+          <td><span class="f-name">Vitest + React Testing Library</span></td>
+          <td class="f-why">Tests what the user sees and does, not internals</td>
+        </tr>
+        <tr>
+          <td class="f-desc">A full user flow (login → dashboard)</td>
+          <td><span class="f-name">Playwright</span></td>
+          <td class="f-why">Real browser, real navigation, end-to-end proof</td>
+        </tr>
+        <tr>
+          <td class="f-desc">What a component looks like visually</td>
+          <td><span class="f-name">Storybook</span></td>
+          <td class="f-why">Isolated rendering, screenshot comparison</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Recommended Folder Structure</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">project structure</span>
+      </div>
+      <pre><span class="c-val">project/</span>
+├── <span class="c-val">backend/</span>
+│   ├── <span class="c-key">routes/</span>
+│   ├── <span class="c-key">models/</span>
+│   ├── <span class="c-key">services/</span>
+│   └── <span class="c-val">tests/</span>
+│       ├── <span class="c-str">setup/db.js</span>         <span class="c-comment">← memory server helper</span>
+│       ├── <span class="c-str">user.route.test.js</span>  <span class="c-comment">← Supertest route tests</span>
+│       └── <span class="c-str">user.model.test.js</span>  <span class="c-comment">← Mongoose model tests</span>
+│
+└── <span class="c-val">frontend/</span>
+    ├── <span class="c-key">src/</span>
+    │   └── <span class="c-key">components/</span>
+    │       └── <span class="c-val">__tests__/</span>
+    │           └── <span class="c-str">Button.test.jsx</span>  <span class="c-comment">← RTL component tests</span>
+    ├── <span class="c-str">e2e/</span>
+    │   └── <span class="c-str">login.spec.ts</span>       <span class="c-comment">← Playwright E2E tests</span>
+    └── <span class="c-str">.storybook/</span>             <span class="c-comment">← Storybook config</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>The recommended 2025 frontend stack:</strong> <strong>Vitest</strong> for unit + component tests (fast, Vite-native), <strong>React Testing Library</strong> for component behavior (user-centric), <strong>Playwright</strong> for E2E (real browser, auto-waiting, free). This combination covers every layer of your frontend with the right tool.</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>Sheryians Coding School · Jest & Testing Notes</span>
+    <span>Module: Backend · Topic: Software Testing</span>
+  </footer>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 2000);
+  });
+}
+const sections = document.querySelectorAll('.section');
+const navLinks  = document.querySelectorAll('nav a');
+const observer  = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const link = document.querySelector(`nav a[href="#${e.target.id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
