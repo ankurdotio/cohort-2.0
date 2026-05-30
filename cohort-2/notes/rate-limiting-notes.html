@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rate Limiting — Sheryians Coding School</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:ital,wght@0,300;0,600;0,700;0,900;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:       #0E0F14;
+  --paper:     #F5F2EB;
+  --paper2:    #EDE9DF;
+  --paper3:    #E4DFD3;
+  --rule:      #D4CEBC;
+  --muted:     #6B6455;
+  --accent:    #C84B1F;
+  --accent2:   #1A6B4A;
+  --accent3:   #1B4587;
+  --gold:      #B8860B;
+  --code-bg:   #1A1C24;
+  --code-text: #E2DCCC;
+  --flag-c:    #5BA4CF;
+  --val-c:     #F4A261;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+body::before {
+  content: 'SHERYIANS CODING SCHOOL';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 42px;
+  font-weight: 600;
+  color: rgba(200, 75, 31, 0.045);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 0;
+  letter-spacing: 0.12em;
+}
+
+.layout { display: flex; min-height: 100vh; }
+
+nav {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--ink);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 32px 0 40px;
+  z-index: 10;
+}
+
+.nav-brand { padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 20px; }
+.nav-brand .logo { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: white; }
+.nav-brand .logo span { color: var(--accent); }
+.nav-brand .sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.06em; margin-top: 4px; }
+
+.nav-group-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase; padding: 0 24px; margin: 16px 0 6px; }
+
+nav a { display: flex; align-items: center; gap: 10px; padding: 9px 24px; font-family: 'DM Sans', sans-serif; font-size: 12.5px; color: rgba(255,255,255,0.5); text-decoration: none; border-left: 2px solid transparent; transition: all 0.15s; }
+nav a:hover { color: white; background: rgba(255,255,255,0.04); }
+nav a.active { color: white; border-left-color: var(--accent); background: rgba(200,75,31,0.08); }
+
+.nav-num { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: rgba(255,255,255,0.08); font-family: 'IBM Plex Mono', monospace; font-size: 9px; border-radius: 4px; flex-shrink: 0; transition: all 0.15s; }
+nav a:hover .nav-num, nav a.active .nav-num { background: var(--accent); color: white; }
+
+main { flex: 1; max-width: calc(99% - 260px); padding: 56px 56px 80px; position: relative; z-index: 1; }
+
+.hero { margin-bottom: 64px; padding-bottom: 40px; border-bottom: 1px solid var(--rule); }
+.hero-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 14px; }
+.hero h1 { font-family: 'Fraunces', serif; font-size: clamp(36px, 5vw, 58px); font-weight: 900; color: var(--ink); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px; }
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero-desc { font-family: 'DM Sans', sans-serif; font-size: 16px; color: var(--muted); max-width: 560px; line-height: 1.65; margin-bottom: 20px; }
+.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.hero-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); border: 1px solid var(--rule); border-radius: 20px; padding: 3px 12px; }
+
+.section { margin-bottom: 72px; animation: fadeUp 0.4s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+.section-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px; }
+.section-num-big { font-family: 'Fraunces', serif; font-size: 48px; font-weight: 900; color: var(--rule); line-height: 1; user-select: none; flex-shrink: 0; }
+.section-title { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+.section-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+h3 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: var(--ink); margin: 28px 0 12px; }
+h4 { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 20px 0 8px; }
+p { color: #2A2720; margin-bottom: 12px; line-height: 1.7; }
+strong { font-weight: 500; color: var(--ink); }
+
+.concept { background: var(--paper2); border-left: 3px solid var(--accent3); border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 16px 0; }
+.concept-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--accent3); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+.concept p { font-size: 14px; line-height: 1.65; margin-bottom: 0; }
+
+.note { display: flex; gap: 12px; background: #FEF9EC; border: 1px solid #EDD97A; border-radius: 8px; padding: 12px 14px; margin: 16px 0; }
+.note p { font-size: 13px; color: #5C4A00; margin-bottom: 0; }
+.note p strong { color: #3D3000; }
+.note-icon { flex-shrink: 0; font-size: 15px; }
+
+.warn { display: flex; gap: 12px; background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 12px 14px; margin: 16px 0; }
+.warn p { font-size: 13px; color: #7F1D1D; margin-bottom: 0; }
+
+.step-label { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; color: white; background: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 4px; margin: 16px 0 8px; }
+.step-label.green { background: var(--accent2); }
+.step-label.blue  { background: var(--accent3); }
+.step-label.gold  { background: var(--gold); }
+
+.code-wrap { margin: 16px 0; border-radius: 8px; overflow: hidden; }
+.code-header { display: flex; align-items: center; justify-content: space-between; background: #13141B; padding: 8px 14px; }
+.code-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.08em; }
+.copy-btn { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); background: none; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 2px 8px; cursor: pointer; transition: all 0.15s; }
+.copy-btn:hover { color: white; border-color: rgba(255,255,255,0.3); }
+.code-wrap pre { background: var(--code-bg); color: var(--code-text); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.8; padding: 16px 18px; overflow-x: auto; margin: 0; }
+.c-cmd   { color: #87CEEB; font-weight: bold; }
+.c-flag  { color: #5BA4CF; }
+.c-val   { color: #F4A261; }
+.c-str   { color: #98C379; }
+.c-comment { color: rgba(255,255,255,0.28); font-style: italic; }
+.c-key   { color: #C678DD; }
+.c-pipe  { color: #E5C07B; }
+code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent); background: var(--paper3); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px; }
+
+.flag-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+.flag-table th { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; background: var(--paper3); padding: 8px 12px; text-align: left; font-weight: 400; }
+.flag-table td { padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+.flag-table tr:hover td { background: var(--paper2); }
+.f-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--flag-c); }
+.f-val  { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--val-c); }
+.f-desc { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); }
+.f-why  { font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--muted); }
+
+.compare { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.compare th { background: var(--ink); color: white; font-size: 13px; font-weight: 600; padding: 10px 14px; text-align: left; }
+.compare th:first-child { border-radius: 8px 0 0 0; }
+.compare th:last-child  { border-radius: 0 8px 0 0; }
+.compare td { padding: 10px 14px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.compare tr:hover td { background: var(--paper2); }
+.row-label { font-weight: 600; color: var(--ink); font-size: 13px; }
+.local-val { color: var(--muted); }
+.eks-val   { color: var(--accent2); font-weight: 500; }
+
+.flow { margin: 16px 0; }
+.flow-step { display: flex; gap: 0; }
+.flow-line { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
+.flow-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 4px; z-index: 1; }
+.flow-connector { width: 2px; background: var(--rule); flex: 1; min-height: 20px; }
+.flow-content { flex: 1; padding: 0 0 18px 10px; }
+.flow-title  { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+.flow-detail { font-family: 'DM Sans', sans-serif; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+.scale-diagram { background: var(--paper2); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 20px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 2; margin: 16px 0; color: var(--muted); }
+.scale-diagram .hi    { color: var(--ink); font-weight: bold; }
+.scale-diagram .green { color: var(--accent2); }
+.scale-diagram .red   { color: var(--accent); }
+
+/* Layer cards */
+.layer-stack { display: flex; flex-direction: column; gap: 0; margin: 16px 0; }
+.layer-card { display: flex; align-items: stretch; border: 1px solid var(--rule); border-bottom: none; overflow: hidden; }
+.layer-card:first-child { border-radius: 8px 8px 0 0; }
+.layer-card:last-child  { border-radius: 0 0 8px 8px; border-bottom: 1px solid var(--rule); }
+.layer-num { width: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 20px; font-weight: 900; color: white; }
+.layer-body { flex: 1; padding: 12px 14px; background: var(--paper); }
+.layer-title { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+.layer-desc  { font-family: 'DM Sans', sans-serif; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.layer-tag   { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: white; padding: 1px 7px; border-radius: 3px; display: inline-block; margin-top: 5px; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.data-card { background: var(--paper2); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; }
+.data-card-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.data-card-title { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.data-card p { font-size: 13px; color: var(--muted); margin-bottom: 0; }
+
+hr.divider { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+
+footer { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid var(--rule); padding: 20px 56px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+
+@media (max-width: 768px) {
+  nav { display: none; }
+  main { padding: 32px 24px 60px; max-width: 100%; }
+  .two-col { grid-template-columns: 1fr; }
+  footer { padding: 16px 24px; flex-direction: column; gap: 6px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav>
+  <div class="nav-brand">
+    <div class="logo">Rate<span>.</span>Limit</div>
+    <div class="sub">Sheryians Coding School</div>
+  </div>
+
+  <div class="nav-group-label">Fundamentals</div>
+  <a href="#what-is" class="active"><span class="nav-num">1</span>What is Rate Limiting?</a>
+  <a href="#setup"><span class="nav-num">2</span>express-rate-limit Setup</a>
+  <a href="#config"><span class="nav-num">3</span>Config Options</a>
+
+  <div class="nav-group-label">Production</div>
+  <a href="#stores"><span class="nav-num">4</span>Redis Store</a>
+  <a href="#response-headers"><span class="nav-num">5</span>Response Headers</a>
+  <a href="#ddos"><span class="nav-num">6</span>DDoS Defence Layers</a>
+  <a href="#attack-types"><span class="nav-num">7</span>Attack Types & Fixes</a>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Sheryians Coding School · Backend Module</div>
+    <h1>Rate Limiting &<br><em>DDoS Defence</em></h1>
+    <p class="hero-desc">How to protect your Express API from abuse, brute-force attacks, and DDoS using express-rate-limit, Redis stores, Nginx, and a layered defence strategy.</p>
+    <div class="hero-tags">
+      <span class="hero-tag">express-rate-limit</span>
+      <span class="hero-tag">Redis Store</span>
+      <span class="hero-tag">DDoS</span>
+      <span class="hero-tag">Nginx</span>
+      <span class="hero-tag">Cloudflare</span>
+      <span class="hero-tag">Helmet</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 — What is Rate Limiting -->
+  <section class="section" id="what-is">
+    <div class="section-header">
+      <div class="section-num-big">01</div>
+      <div class="section-title-block">
+        <div class="section-title">What is Rate Limiting?</div>
+        <div class="section-subtitle">The bouncer at the door — legitimate users never notice it, bots get stopped cold</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p><strong>Rate limiting</strong> controls how many requests a client can make to your server within a defined time window. A client that exceeds the limit gets a <strong>429 Too Many Requests</strong> response. Legitimate users, who make maybe 10–20 requests per minute, never hit the limit. Bots and attackers making thousands of requests per second are blocked.</p>
+    </div>
+
+    <h3>What it Protects Against</h3>
+    <div class="two-col">
+      <div class="data-card">
+        <div class="data-card-label">Protection</div>
+        <div class="data-card-title">Brute-force attacks</div>
+        <p>Attackers trying thousands of password combinations on <code>/login</code>. Rate limiting stops them after 5–10 attempts.</p>
+      </div>
+      <div class="data-card">
+        <div class="data-card-label">Protection</div>
+        <div class="data-card-title">Server overload</div>
+        <p>A single buggy client or scraped loop hammering your API. Rate limiting caps the damage from one bad actor.</p>
+      </div>
+      <div class="data-card">
+        <div class="data-card-label">Protection</div>
+        <div class="data-card-title">API abuse / scraping</div>
+        <p>Bots scraping your entire product catalogue in seconds. Rate limiting slows them to a pace your server handles easily.</p>
+      </div>
+      <div class="data-card">
+        <div class="data-card-label">Protection</div>
+        <div class="data-card-title">Cloud cost spikes</div>
+        <p>More requests = more compute, more DB reads, higher bills. Rate limiting puts a hard ceiling on resource consumption per client.</p>
+      </div>
+    </div>
+
+    <div class="scale-diagram">
+      <span class="hi">Without rate limiting:</span><br>
+      &nbsp;&nbsp;Bot sends 10,000 requests/min → DB overwhelmed → server crashes → all users affected<br>
+      <br>
+      <span class="hi">With rate limiting:</span><br>
+      &nbsp;&nbsp;Bot sends 10,000 requests/min<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="green">After request #100 → 429 Too Many Requests ← bot is stopped</span><br>
+      <span class="green">Real users (10 req/min) → 200 OK ← unaffected ✅</span>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 2 — Setup -->
+  <section class="section" id="setup">
+    <div class="section-header">
+      <div class="section-num-big">02</div>
+      <div class="section-title-block">
+        <div class="section-title">express-rate-limit Setup</div>
+        <div class="section-subtitle">Install, configure globally, and apply selectively to sensitive routes</div>
+      </div>
+    </div>
+
+    <div class="step-label">Step 1 — Install</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Terminal</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">npm</span> <span class="c-flag">install</span> <span class="c-val">express-rate-limit</span></pre>
+    </div>
+
+    <div class="step-label">Step 2 — Global limiter (all routes)</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">app.js</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> rateLimit <span class="c-key">from</span> <span class="c-str">'express-rate-limit'</span>;
+
+<span class="c-cmd">const</span> globalLimiter = <span class="c-cmd">rateLimit</span>({
+  <span class="c-key">windowMs</span>: <span class="c-val">15</span> * <span class="c-val">60</span> * <span class="c-val">1000</span>,  <span class="c-comment">// 15 minutes</span>
+  <span class="c-key">max</span>: <span class="c-val">100</span>,                    <span class="c-comment">// 100 requests per window per IP</span>
+  <span class="c-key">message</span>: {
+    <span class="c-key">error</span>: <span class="c-str">'Too many requests. Please try again later.'</span>
+  },
+  <span class="c-key">statusCode</span>: <span class="c-val">429</span>,
+  <span class="c-key">standardHeaders</span>: <span class="c-val">true</span>,   <span class="c-comment">// sends RateLimit-* headers</span>
+  <span class="c-key">legacyHeaders</span>: <span class="c-val">false</span>,
+});
+
+<span class="c-comment">// Apply to every route</span>
+app.<span class="c-cmd">use</span>(globalLimiter);</pre>
+    </div>
+
+    <div class="step-label">Step 3 — Stricter limiter on sensitive routes</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">auth routes</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">const</span> authLimiter = <span class="c-cmd">rateLimit</span>({
+  <span class="c-key">windowMs</span>: <span class="c-val">15</span> * <span class="c-val">60</span> * <span class="c-val">1000</span>,  <span class="c-comment">// 15 minutes</span>
+  <span class="c-key">max</span>: <span class="c-val">10</span>,                     <span class="c-comment">// only 10 attempts per window</span>
+  <span class="c-key">message</span>: { <span class="c-key">error</span>: <span class="c-str">'Too many login attempts. Try again in 15 minutes.'</span> },
+  <span class="c-key">skipSuccessfulRequests</span>: <span class="c-val">true</span>, <span class="c-comment">// don't count successful logins</span>
+});
+
+<span class="c-comment">// Apply only to auth routes</span>
+app.<span class="c-cmd">post</span>(<span class="c-str">'/api/auth/login'</span>,    authLimiter, loginController);
+app.<span class="c-cmd">post</span>(<span class="c-str">'/api/auth/register'</span>, authLimiter, registerController);
+app.<span class="c-cmd">post</span>(<span class="c-str">'/api/auth/forgot'</span>,   authLimiter, forgotController);</pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Pattern:</strong> Use a loose global limiter (100 req/15min) on all routes as a baseline, then apply a tight limiter (5–10 req/15min) on specific sensitive routes like login, register, and password reset.</p>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 3 — Config Options -->
+  <section class="section" id="config">
+    <div class="section-header">
+      <div class="section-num-big">03</div>
+      <div class="section-title-block">
+        <div class="section-title">Configuration Options</div>
+        <div class="section-subtitle">Every key option and what it does</div>
+      </div>
+    </div>
+
+    <table class="flag-table">
+      <thead>
+        <tr><th>Option</th><th>Default</th><th>What it does</th><th>When to use</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">windowMs</span></td>
+          <td><span class="f-val">60000 (1 min)</span></td>
+          <td class="f-desc">The time window in milliseconds. Resets the counter after this duration.</td>
+          <td class="f-why">Always set explicitly. 15min for auth, 1min for APIs.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">max</span></td>
+          <td><span class="f-val">5</span></td>
+          <td class="f-desc">Max number of requests per IP per window. Requests above this get 429.</td>
+          <td class="f-why">100 for general API, 5–10 for auth routes.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">message</span></td>
+          <td><span class="f-val">"Too many requests"</span></td>
+          <td class="f-desc">Response body when limit is hit. Can be a string, object, or function.</td>
+          <td class="f-why">Return JSON so clients can parse it programmatically.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">statusCode</span></td>
+          <td><span class="f-val">429</span></td>
+          <td class="f-desc">HTTP status code returned when limit is exceeded.</td>
+          <td class="f-why">Leave at 429 — it's the correct semantic status.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">keyGenerator</span></td>
+          <td><span class="f-val">req.ip</span></td>
+          <td class="f-desc">Function that returns the unique key for a client. Default is IP address.</td>
+          <td class="f-why">Use <code>req.user.id</code> for per-user limits on authenticated routes.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">skip</span></td>
+          <td><span class="f-val">undefined</span></td>
+          <td class="f-desc">Function returning true to skip rate limiting for certain requests.</td>
+          <td class="f-why">Whitelist your own server IPs, health checks, or internal services.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">skipSuccessfulRequests</span></td>
+          <td><span class="f-val">false</span></td>
+          <td class="f-desc">If true, only failed requests (4xx/5xx) count toward the limit.</td>
+          <td class="f-why">Great for login — only failed attempts count toward the brute-force limit.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">store</span></td>
+          <td><span class="f-val">MemoryStore</span></td>
+          <td class="f-desc">Where request counts are stored. Default is in-process memory.</td>
+          <td class="f-why">Must change to Redis in production with multiple server instances.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>keyGenerator Examples</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Custom key strategies</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-comment">// Default — limit by IP address</span>
+<span class="c-key">keyGenerator</span>: (req) => req.ip,
+
+<span class="c-comment">// Per authenticated user (after auth middleware)</span>
+<span class="c-key">keyGenerator</span>: (req) => req.user?.id || req.ip,
+
+<span class="c-comment">// Per API key (for developer APIs)</span>
+<span class="c-key">keyGenerator</span>: (req) => req.headers[<span class="c-str">'x-api-key'</span>] || req.ip,
+
+<span class="c-comment">// Combine IP + route (different limits per endpoint)</span>
+<span class="c-key">keyGenerator</span>: (req) => <span class="c-str">`${req.ip}:${req.path}`</span>,</pre>
+    </div>
+
+    <h3>skip — Whitelist Trusted IPs</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Whitelisting</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">const</span> TRUSTED = [<span class="c-str">'127.0.0.1'</span>, <span class="c-str">'10.0.0.1'</span>]; <span class="c-comment">// internal IPs</span>
+
+<span class="c-cmd">const</span> limiter = <span class="c-cmd">rateLimit</span>({
+  <span class="c-key">windowMs</span>: <span class="c-val">15</span> * <span class="c-val">60</span> * <span class="c-val">1000</span>,
+  <span class="c-key">max</span>: <span class="c-val">100</span>,
+  <span class="c-key">skip</span>: (req) => TRUSTED.<span class="c-cmd">includes</span>(req.ip), <span class="c-comment">// trusted IPs skip the limiter</span>
+});</pre>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 4 — Redis Store -->
+  <section class="section" id="stores">
+    <div class="section-header">
+      <div class="section-num-big">04</div>
+      <div class="section-title-block">
+        <div class="section-title">Redis Store — Why It Matters</div>
+        <div class="section-subtitle">The default in-memory store breaks in production — here's the fix</div>
+      </div>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>The default MemoryStore only works for single-process apps.</strong> If you run 4 server instances (4 CPUs, PM2 cluster, Kubernetes pods), each instance has its own counter. A bot can make 100 requests to each instance — 400 total — and never get blocked. Your rate limit is useless.</p>
+    </div>
+
+    <div class="scale-diagram">
+      <span class="hi">Bot sends 400 requests (100 to each of 4 instances):</span><br>
+      <br>
+      <span class="red">Instance 1: 100 req → limit hit (but only knows about its own 100)</span><br>
+      <span class="red">Instance 2: 100 req → limit hit (doesn't know about Instance 1)</span><br>
+      <span class="red">Instance 3: 100 req → limit hit</span><br>
+      <span class="red">Instance 4: 100 req → limit hit</span><br>
+      <br>
+      <span class="red">Bot got 400 requests through. Rate limiting was completely bypassed. ✗</span><br>
+      <br>
+      <span class="hi">With Redis store (shared counter):</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="green">All 4 instances share one counter in Redis → 429 after 100 total ✅</span>
+    </div>
+
+    <div class="step-label">Step 1 — Install Redis store</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">Terminal</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-cmd">npm</span> <span class="c-flag">install</span> <span class="c-val">rate-limit-redis</span> <span class="c-val">ioredis</span></pre>
+    </div>
+
+    <div class="step-label">Step 2 — Wire Redis as the store</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">app.js — production-ready limiter</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> rateLimit  <span class="c-key">from</span> <span class="c-str">'express-rate-limit'</span>;
+<span class="c-key">import</span> RedisStore <span class="c-key">from</span> <span class="c-str">'rate-limit-redis'</span>;
+<span class="c-key">import</span> Redis      <span class="c-key">from</span> <span class="c-str">'ioredis'</span>;
+
+<span class="c-cmd">const</span> redisClient = <span class="c-cmd">new</span> Redis({
+  host: process.env.<span class="c-val">REDIS_HOST</span>,
+  port: <span class="c-val">6379</span>,
+});
+
+<span class="c-cmd">const</span> limiter = <span class="c-cmd">rateLimit</span>({
+  <span class="c-key">windowMs</span>: <span class="c-val">15</span> * <span class="c-val">60</span> * <span class="c-val">1000</span>,
+  <span class="c-key">max</span>: <span class="c-val">100</span>,
+  <span class="c-key">standardHeaders</span>: <span class="c-val">true</span>,
+  <span class="c-key">legacyHeaders</span>: <span class="c-val">false</span>,
+  <span class="c-key">store</span>: <span class="c-cmd">new</span> RedisStore({
+    <span class="c-key">sendCommand</span>: (...args) => redisClient.<span class="c-cmd">call</span>(...args),
+    <span class="c-key">prefix</span>: <span class="c-str">'rl:'</span>, <span class="c-comment">// all keys prefixed rl:&lt;ip&gt; in Redis</span>
+  }),
+});
+
+app.<span class="c-cmd">use</span>(limiter);</pre>
+    </div>
+
+    <h3>Store Comparison</h3>
+    <table class="compare">
+      <thead>
+        <tr><th>Store</th><th>Use case</th><th>Production ready?</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="row-label">MemoryStore (default)</td>
+          <td class="local-val">Single process, local dev only</td>
+          <td class="local-val">No — lost on restart, doesn't share across instances</td>
+        </tr>
+        <tr>
+          <td class="row-label">RedisStore</td>
+          <td class="eks-val">Any multi-instance production environment</td>
+          <td class="eks-val">Yes — shared, persistent, fast ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">PostgreSQL store</td>
+          <td class="local-val">Already have Postgres, don't want Redis</td>
+          <td class="local-val">Works, but slower than Redis for this use case</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 5 — Response Headers -->
+  <section class="section" id="response-headers">
+    <div class="section-header">
+      <div class="section-num-big">05</div>
+      <div class="section-title-block">
+        <div class="section-title">Response Headers</div>
+        <div class="section-subtitle">What Express sends back so clients know their current rate limit status</div>
+      </div>
+    </div>
+
+    <p>When <code>standardHeaders: true</code> is set, Express adds these headers to every response so clients can track their own rate limit status:</p>
+
+    <table class="flag-table">
+      <thead>
+        <tr><th>Header</th><th>Example Value</th><th>What it tells the client</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">RateLimit-Limit</span></td>
+          <td><span class="f-val">100</span></td>
+          <td class="f-desc">Maximum requests allowed in this window</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">RateLimit-Remaining</span></td>
+          <td><span class="f-val">73</span></td>
+          <td class="f-desc">Requests left before being blocked in this window</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">RateLimit-Reset</span></td>
+          <td><span class="f-val">1716400800</span></td>
+          <td class="f-desc">Unix timestamp of when the window resets (counter goes back to 0)</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Retry-After</span></td>
+          <td><span class="f-val">843</span></td>
+          <td class="f-desc">Seconds until the client can retry (sent only on 429 responses)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>Well-behaved API clients (and your own frontend) should read <strong>RateLimit-Remaining</strong> and slow down requests before hitting the limit, rather than hammering until they get a 429.</p>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 6 — DDoS Defence Layers -->
+  <section class="section" id="ddos">
+    <div class="section-header">
+      <div class="section-num-big">06</div>
+      <div class="section-title-block">
+        <div class="section-title">DDoS Defence — Layered Approach</div>
+        <div class="section-subtitle">Express alone cannot stop a real DDoS — defence must be layered from the cloud inward</div>
+      </div>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>Express is the last line of defence, not the first.</strong> A real DDoS can send millions of requests per second. By the time traffic reaches your Node.js process, it's too late. Defence must start at the network edge — before traffic reaches your server at all.</p>
+    </div>
+
+    <div class="layer-stack">
+      <div class="layer-card">
+        <div class="layer-num" style="background: #C84B1F;">1</div>
+        <div class="layer-body">
+          <div class="layer-title">Cloud-level protection (CDN / Shield)</div>
+          <div class="layer-desc">Absorbs and filters malicious traffic before it reaches your server. Cloudflare free tier handles most real-world attacks. AWS Shield, GCP Cloud Armor, Akamai for enterprise.</div>
+          <span class="layer-tag" style="background: #C84B1F;">Most powerful layer — handles volumetric floods</span>
+        </div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-num" style="background: #1B4587;">2</div>
+        <div class="layer-body">
+          <div class="layer-title">Nginx reverse proxy</div>
+          <div class="layer-desc">Nginx sits in front of Express and rate-limits at a lower, more efficient level. Uses <code>limit_req_zone</code> and <code>limit_conn_zone</code> directives to throttle per-IP before Node.js is even involved.</div>
+          <span class="layer-tag" style="background: #1B4587;">Connection-level protection — cheaper than Express middleware</span>
+        </div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-num" style="background: #1A6B4A;">3</div>
+        <div class="layer-body">
+          <div class="layer-title">Express middleware stack</div>
+          <div class="layer-desc">helmet for secure headers, body size limits, express-slow-down as a speed bump, express-rate-limit for hard cutoffs, hpp to prevent HTTP Parameter Pollution.</div>
+          <span class="layer-tag" style="background: #1A6B4A;">Application-level protection — where your rate limits live</span>
+        </div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-num" style="background: #B8860B;">4</div>
+        <div class="layer-body">
+          <div class="layer-title">Suspicious traffic detection</div>
+          <div class="layer-desc">Filter known malicious user agents (<code>sqlmap</code>, <code>nikto</code>, <code>masscan</code>). Reject requests with no <code>User-Agent</code> header — a hallmark of raw bots. Block tor exit nodes if relevant.</div>
+          <span class="layer-tag" style="background: #B8860B;">Bot filtering — stops automated scanners early</span>
+        </div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-num" style="background: #6B6455;">5</div>
+        <div class="layer-body">
+          <div class="layer-title">Process resilience (cluster / PM2)</div>
+          <div class="layer-desc">Run one Node.js worker per CPU core. If traffic spikes, all cores engage. PM2 or Node cluster ensures even a traffic spike doesn't idle available hardware.</div>
+          <span class="layer-tag" style="background: #6B6455;">Resilience — stay alive even under load</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Full Express Middleware Stack (production)</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">app.js — complete protection stack</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-key">import</span> express    <span class="c-key">from</span> <span class="c-str">'express'</span>;
+<span class="c-key">import</span> helmet     <span class="c-key">from</span> <span class="c-str">'helmet'</span>;
+<span class="c-key">import</span> rateLimit  <span class="c-key">from</span> <span class="c-str">'express-rate-limit'</span>;
+<span class="c-key">import</span> slowDown   <span class="c-key">from</span> <span class="c-str">'express-slow-down'</span>;
+<span class="c-key">import</span> hpp        <span class="c-key">from</span> <span class="c-str">'hpp'</span>;
+
+<span class="c-cmd">const</span> app = <span class="c-cmd">express</span>();
+
+<span class="c-comment">// Layer 1 — Secure HTTP headers</span>
+app.<span class="c-cmd">use</span>(<span class="c-cmd">helmet</span>());
+
+<span class="c-comment">// Layer 2 — Limit payload size (prevents large body attacks)</span>
+app.<span class="c-cmd">use</span>(express.<span class="c-cmd">json</span>({ <span class="c-key">limit</span>: <span class="c-str">'10kb'</span> }));
+
+<span class="c-comment">// Layer 3 — Prevent HTTP Parameter Pollution</span>
+app.<span class="c-cmd">use</span>(<span class="c-cmd">hpp</span>());
+
+<span class="c-comment">// Layer 4 — Speed bump (gradually slow down before hard block)</span>
+<span class="c-cmd">const</span> speedLimiter = <span class="c-cmd">slowDown</span>({
+  <span class="c-key">windowMs</span>: <span class="c-val">15</span> * <span class="c-val">60</span> * <span class="c-val">1000</span>,
+  <span class="c-key">delayAfter</span>: <span class="c-val">50</span>,   <span class="c-comment">// start slowing after 50 requests</span>
+  <span class="c-key">delayMs</span>: () => <span class="c-val">500</span>, <span class="c-comment">// add 500ms delay per extra request</span>
+});
+app.<span class="c-cmd">use</span>(speedLimiter);
+
+<span class="c-comment">// Layer 5 — Hard rate limit</span>
+app.<span class="c-cmd">use</span>(<span class="c-cmd">rateLimit</span>({
+  <span class="c-key">windowMs</span>: <span class="c-val">15</span> * <span class="c-val">60</span> * <span class="c-val">1000</span>,
+  <span class="c-key">max</span>: <span class="c-val">100</span>,
+}));
+
+<span class="c-comment">// Layer 6 — Block suspicious user agents</span>
+app.<span class="c-cmd">use</span>((req, res, next) => {
+  <span class="c-cmd">const</span> ua = req.headers[<span class="c-str">'user-agent'</span>] || <span class="c-str">''</span>;
+  <span class="c-cmd">const</span> blocked = [<span class="c-str">'sqlmap'</span>, <span class="c-str">'nikto'</span>, <span class="c-str">'masscan'</span>, <span class="c-str">'nmap'</span>];
+  <span class="c-key">if</span> (!ua || blocked.<span class="c-cmd">some</span>(b => ua.<span class="c-cmd">toLowerCase</span>().<span class="c-cmd">includes</span>(b))) {
+    <span class="c-key">return</span> res.<span class="c-cmd">status</span>(<span class="c-val">403</span>).<span class="c-cmd">json</span>({ <span class="c-key">error</span>: <span class="c-str">'Forbidden'</span> });
+  }
+  <span class="c-cmd">next</span>();
+});</pre>
+    </div>
+
+    <h3>Nginx Rate Limiting Config</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-label">nginx.conf</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      </div>
+      <pre><span class="c-comment"># Define rate limit zones in http block</span>
+<span class="c-key">http</span> {
+  <span class="c-comment"># 10MB shared memory zone, 10 req/sec per IP</span>
+  <span class="c-key">limit_req_zone</span>  <span class="c-val">$binary_remote_addr</span> <span class="c-flag">zone</span>=<span class="c-val">api:10m</span> <span class="c-flag">rate</span>=<span class="c-val">10r/s</span>;
+
+  <span class="c-comment"># Max 20 simultaneous connections per IP</span>
+  <span class="c-key">limit_conn_zone</span> <span class="c-val">$binary_remote_addr</span> <span class="c-flag">zone</span>=<span class="c-val">conn:10m</span>;
+
+  <span class="c-key">server</span> {
+    <span class="c-key">location</span> /api/ {
+      <span class="c-key">limit_req</span>  <span class="c-flag">zone</span>=<span class="c-val">api</span> <span class="c-flag">burst</span>=<span class="c-val">20</span> <span class="c-flag">nodelay</span>;
+      <span class="c-key">limit_conn</span> <span class="c-val">conn</span> <span class="c-val">20</span>;
+      <span class="c-key">proxy_pass</span> http://localhost:<span class="c-val">3000</span>;
+    }
+  }
+}</pre>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SECTION 7 — Attack Types -->
+  <section class="section" id="attack-types">
+    <div class="section-header">
+      <div class="section-num-big">07</div>
+      <div class="section-title-block">
+        <div class="section-title">Attack Types & Defences</div>
+        <div class="section-subtitle">Each attack type has a different fix — match the defence to the threat</div>
+      </div>
+    </div>
+
+    <table class="compare">
+      <thead>
+        <tr><th>Attack Type</th><th>How it works</th><th>Right defence</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="row-label">Volumetric flood</td>
+          <td class="local-val">Millions of requests/sec from botnets, saturating bandwidth</td>
+          <td class="eks-val">Cloudflare / CDN — absorb at the edge before reaching server ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">HTTP flood</td>
+          <td class="local-val">Valid HTTP requests at high volume from distributed IPs</td>
+          <td class="eks-val">express-rate-limit + Nginx limit_req_zone ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Brute-force login</td>
+          <td class="local-val">Thousands of password attempts on /login endpoint</td>
+          <td class="eks-val">Tight auth limiter (5 req/15min) + skipSuccessfulRequests ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Slowloris</td>
+          <td class="local-val">Opens many connections, sends headers slowly to exhaust workers</td>
+          <td class="eks-val">Nginx client_body_timeout + client_header_timeout ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Large payload attack</td>
+          <td class="local-val">Sends massive JSON bodies to exhaust memory/CPU</td>
+          <td class="eks-val">express.json({ limit: '10kb' }) — reject oversized bodies ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">Bot / scanner traffic</td>
+          <td class="local-val">sqlmap, nikto, masscan running automated scans</td>
+          <td class="eks-val">User-agent filtering middleware — block known tool signatures ✓</td>
+        </tr>
+        <tr>
+          <td class="row-label">HTTP Param Pollution</td>
+          <td class="local-val">Sending duplicate query params to confuse validation logic</td>
+          <td class="eks-val">hpp middleware — keeps last value, discards duplicates ✓</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Quick wins with zero code:</strong> Enabling Cloudflare in front of your domain (even the free tier) eliminates the vast majority of real-world attacks before a single request reaches your server. Do this first, then add the Express middleware stack.</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>Sheryians Coding School · Rate Limiting & DDoS Notes</span>
+    <span>Module: Backend · Topic: API Security</span>
+  </footer>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 2000);
+  });
+}
+
+const sections = document.querySelectorAll('.section');
+const navLinks  = document.querySelectorAll('nav a');
+const observer  = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

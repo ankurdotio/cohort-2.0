@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  sandbox-deployment
+  labels:
+    name:  sandbox-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sandbox
+  template:
+    metadata:
+      labels:
+        app: sandbox
+    spec:
+      serviceAccountName: resource-manager
+      containers:
+      - image:  329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/sandbox
+        imagePullPolicy: IfNotPresent
+        name:  main-sandbox-container
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "400Mi"
+          requests:
+            cpu: "250m"
+            memory: "200Mi"
+        livenessProbe:
+          httpGet:
+            path: /api/sandbox/health
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        env:
+          - name: REDIS_URL
+            valueFrom:
+              secretKeyRef:
+                name: database
+                key: REDIS_URL
+                
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: jwt
+                key: JWT_SECRET
+                
+          - name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: database
+                key: SANDBOX
+        readinessProbe:
+          httpGet:
+            path: /api/sandbox/health
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10      
+        ports:
+        - containerPort:  3000
+          name:  main-sandbox
+      

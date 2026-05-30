@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  notification-deployment
+  labels:
+    name:  notification-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app:  notification
+  template:
+    metadata:
+      labels:
+        app:  notification
+    spec:
+      containers:
+      - image:  329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/notification
+        name:  notification-server
+        resources:
+          requests:
+            cpu: "150m"
+            memory: "100M"
+          limits:
+            cpu: "300m"
+            memory: "200M"
+        livenessProbe:
+          httpGet:
+            path: /_status/healthz
+            port: 4000
+          initialDelaySeconds: 90
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /_status/healthz
+            port: 4000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        env:
+          - name:  EMAIL_USER
+            valueFrom:
+              secretKeyRef:
+                name:  google
+                key:  EMAIL_USER 
+
+          - name:  GOOGLE_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name:  google
+                key:  GOOGLE_CLIENT_ID
+
+          - name:  GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name:  google
+                key:  GOOGLE_CLIENT_SECRET
+
+          - name:  GOOGLE_REFRESH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name:  google
+                key:  GOOGLE_REFRESH_TOKEN
+
+          - name: RABBITMQ_URL
+            valueFrom:
+              secretKeyRef:
+                name: database
+                key: RABBITMQ_URL
+        ports:
+        - containerPort:  4000
+          name:  my-name
+       

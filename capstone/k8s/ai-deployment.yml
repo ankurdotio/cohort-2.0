@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  ai-deployment
+  labels:
+    name:  ai-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-server
+  template:
+    metadata:
+      labels:
+        app:  ai-server
+    spec:
+      containers:
+      - image:  329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/ai-orchestration
+        name:  ai-server
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "128M"
+          limits:
+            cpu: "500m"
+            memory: "256M"
+        env:
+          - name: MISTRAL_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ai-secret
+                key: MISTRAL_API_KEY
+        livenessProbe:
+          httpGet:
+            path: /api/status/healthz
+            port: 3000
+          initialDelaySeconds: 90
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/status/healthz
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10   
+        ports:
+        - containerPort:  3000
+          name:  ai-server-port
+        

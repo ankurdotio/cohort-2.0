@@ -1,0 +1,2294 @@
+<html lang="en"><head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        let requestId = 0;
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = requestId++;
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream
+                resolve(new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers
+                }));
+              },
+              reject,
+              channelId
+            });
+            
+            window.parent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          if (event.data.type === 'takeScreenshot') {
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              window.parent.postMessage({
+                type: 'screenshotError',
+                error: new Error('Root element not found'),
+              }, '*');
+            }
+            const screenshot = await htmlToImage.toPng(rootElement, {
+              imagePlaceholder:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+            });
+            window.parent.postMessage({
+              type: 'screenshotData',
+              data: screenshot,
+            }, '*');
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          window.parent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EKS Deployment — Complete Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Fraunces:ital,wght@0,300;0,600;0,700;0,900;1,300&amp;family=DM+Sans:wght@300;400;500&amp;display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --ink:       #0E0F14;
+  --paper:     #F5F2EB;
+  --paper2:    #EDE9DF;
+  --paper3:    #E4DFD3;
+  --rule:      #D4CEBC;
+  --accent:    #C84B1F;
+  --accent2:   #1A6B4A;
+  --accent3:   #1B4587;
+  --gold:      #B8860B;
+  --muted:     #6B6455;
+  --code-bg:   #1A1C24;
+  --code-text: #E2DCCC;
+  --flag-c:    #5BA4CF;
+  --val-c:     #F4A261;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ── Layout ── */
+.layout { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+nav {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--ink);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 32px 0 40px;
+}
+.nav-brand {
+  padding: 0 24px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 20px;
+}
+.nav-brand .logo {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.nav-brand .logo span { color: var(--accent); }
+.nav-brand .sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 4px;
+  letter-spacing: 0.06em;
+}
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 24px;
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 400;
+  transition: all 0.2s;
+  border-left: 2px solid transparent;
+}
+nav a:hover { color: #fff; background: rgba(255,255,255,0.04); }
+nav a.active { color: #fff; border-left-color: var(--accent); background: rgba(200,75,31,0.08); }
+nav .nav-group-label {
+  padding: 16px 24px 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.nav-num {
+  width: 18px; height: 18px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; color: rgba(255,255,255,0.4);
+  flex-shrink: 0;
+}
+nav a:hover .nav-num, nav a.active .nav-num {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ── Main ── */
+main {
+  flex: 1;
+  max-width: calc(99% - 256px);
+  padding: 56px 56px 80px;
+}
+
+/* ── Hero ── */
+.hero {
+  margin-bottom: 64px;
+  padding-bottom: 40px;
+  border-bottom: 2px solid var(--rule);
+  position: relative;
+}
+.hero-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(36px, 5vw, 58px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero-desc {
+  font-size: 16px;
+  color: var(--muted);
+  max-width: 560px;
+  line-height: 1.65;
+}
+.hero-meta {
+  display: flex; gap: 24px; margin-top: 24px; flex-wrap: wrap;
+}
+.hero-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  color: var(--muted);
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: 72px;
+  animation: fadeUp 0.4s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.section-num-big {
+  font-family: 'Fraunces', serif;
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--rule);
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: -4px;
+  user-select: none;
+}
+.section-title-block { flex: 1; }
+.section-title {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.section-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── Concept box ── */
+.concept {
+  background: var(--paper2);
+  border-left: 3px solid var(--accent3);
+  border-radius: 0 8px 8px 0;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+.concept-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--accent3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.concept p { font-size: 14px; color: var(--ink); line-height: 1.65; }
+.concept strong { color: var(--ink); font-weight: 600; }
+
+/* ── Note box ── */
+.note {
+  background: #FEF9EC;
+  border: 1px solid #EDD97A;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.note-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.note p { font-size: 13px; color: #5C4A00; line-height: 1.6; }
+.note strong { color: #3D3000; }
+
+/* ── Warning box ── */
+.warn {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.warn p { font-size: 13px; color: #7F1D1D; line-height: 1.6; }
+
+/* ── Code block ── */
+.code-wrap {
+  background: var(--code-bg);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 16px 0;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.code-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.copy-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  background: none; border: none; cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+pre {
+  padding: 20px;
+  overflow-x: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--code-text);
+}
+.c-cmd   { color: #87CEEB; font-weight: 600; }
+.c-flag  { color: #5BA4CF; }
+.c-val   { color: #F4A261; }
+.c-str   { color: #98C379; }
+.c-comment { color: rgba(255,255,255,0.28); font-style: italic; }
+.c-key   { color: #C678DD; }
+.c-pipe  { color: #E5C07B; }
+
+/* ── Flag table ── */
+.flag-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 20px;
+  font-size: 13px;
+}
+.flag-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--paper3);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+}
+.flag-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.flag-table tr:last-child td { border-bottom: none; }
+.flag-table tr:hover td { background: var(--paper2); }
+.f-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--flag-c);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.f-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--val-c);
+}
+.f-desc { color: var(--ink); font-size: 13px; line-height: 1.5; }
+.f-why  { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* ── Flow diagram ── */
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 20px 0;
+}
+.flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.flow-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.flow-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.flow-connector {
+  width: 2px;
+  flex: 1;
+  min-height: 20px;
+  background: var(--rule);
+}
+.flow-content {
+  padding-bottom: 18px;
+  flex: 1;
+}
+.flow-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+.flow-detail {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── Compare table ── */
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13.5px;
+}
+.compare th {
+  padding: 10px 16px;
+  text-align: left;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+}
+.compare th:first-child { border-radius: 8px 0 0 0; }
+.compare th:last-child  { border-radius: 0 8px 0 0; }
+.compare td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.compare tr:last-child td { border-bottom: none; }
+.compare tr:hover td { background: var(--paper2); }
+.compare .row-label {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 13px;
+}
+.compare .local-val { color: var(--muted); }
+.compare .eks-val   { color: var(--accent2); font-weight: 500; }
+
+/* ── Inline code ── */
+code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  background: var(--paper3);
+  border: 1px solid var(--rule);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ── Sub heading ── */
+h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 28px 0 12px;
+}
+h4 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 20px 0 8px;
+}
+p { margin-bottom: 12px; font-size: 14.5px; color: #2A2720; line-height: 1.7; }
+
+/* ── Step label ── */
+.step-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.step-label.green { background: var(--accent2); }
+.step-label.blue  { background: var(--accent3); }
+.step-label.gold  { background: var(--gold); }
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 40px 0;
+}
+
+/* ── Scaling diagram ── */
+.scale-diagram {
+  background: var(--paper2);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 16px 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 2;
+}
+.scale-diagram .hi { color: var(--ink); font-weight: 600; }
+.scale-diagram .red { color: var(--accent); }
+.scale-diagram .green { color: var(--accent2); }
+
+/* ── Footer ── */
+footer {
+  margin-top: 80px;
+  padding-top: 24px;
+  border-top: 2px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+footer span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@media (max-width: 768px) {
+  nav { display: none; }
+  main { padding: 32px 24px 60px; }
+}
+</style>
+</head>
+<body id="artifacts-component-root-html">
+
+<div class="layout">
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<nav>
+  <div class="nav-brand">
+    <div class="logo">EKS<span>.</span>Deploy</div>
+    <div class="sub">Sheryians Coding School</div>
+  </div>
+
+  <div class="nav-group-label">Concepts</div>
+  <a href="#what-is-eks"><span class="nav-num">0</span> What is EKS</a>
+  <a href="#architecture"><span class="nav-num">1</span> Full Architecture</a>
+
+  <div class="nav-group-label">Setup</div>
+  <a href="#tools"><span class="nav-num">2</span> Install Tools</a>
+  <a href="#iam"><span class="nav-num">3</span> IAM &amp; AWS CLI</a>
+  <a href="#cluster"><span class="nav-num">4</span> Create Cluster</a>
+
+  <div class="nav-group-label">Backend Deploy</div>
+  <a href="#ecr"><span class="nav-num">5</span> Batch ECR Setup</a>
+  <a href="#skaffold"><span class="nav-num">6</span> Skaffold Deploy</a>
+  <a href="#ingress"><span class="nav-num">7</span> Ingress Controller</a>
+  <a href="#verify-backend"><span class="nav-num">8</span> Verify Backend</a>
+
+  <div class="nav-group-label">Frontend Deploy</div>
+  <a href="#acm"><span class="nav-num">9</span> ACM SSL Certificate</a>
+  <a href="#s3"><span class="nav-num">10</span> S3 Bucket Setup</a>
+  <a href="#cloudfront"><span class="nav-num">11</span> CloudFront Setup</a>
+  <a href="#cloudfront-api"><span class="nav-num">12</span> API Routing via CF</a>
+
+  <div class="nav-group-label">Production</div>
+  <a href="#dns"><span class="nav-num">13</span> DNS Configuration</a>
+  <a href="#autoscaling"><span class="nav-num">14</span> Autoscaling</a>
+  <a href="#updates"><span class="nav-num">15</span> Updating Services</a>
+  <a href="#cleanup"><span class="nav-num">16</span> Cleanup</a>
+</nav>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Complete Notes · Microservices on EKS</div>
+    <h1>Deploying on<br><em>Amazon EKS</em></h1>
+    <p class="hero-desc">An end-to-end guide for deploying a multi-service application to AWS — covering EKS cluster setup, Skaffold-driven microservice deploys, and a React frontend served from S3 + CloudFront, all on a single domain.</p>
+    <div class="hero-meta">
+      <span class="hero-tag">Skaffold</span>
+      <span class="hero-tag">ECR · Multi-service</span>
+      <span class="hero-tag">S3 + CloudFront</span>
+      <span class="hero-tag">Region: ap-southeast-1</span>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════
+       0. WHAT IS EKS
+  ════════════════════════════════════ -->
+  <section class="section" id="what-is-eks">
+    <div class="section-header">
+      <div class="section-num-big">00</div>
+      <div class="section-title-block">
+        <div class="section-title">What is EKS?</div>
+        <div class="section-subtitle">Key concept before you start</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Core Concept</div>
+      <p><strong>EKS (Elastic Kubernetes Service)</strong> is AWS's managed Kubernetes service. AWS runs and maintains the <strong>control plane</strong> (the master node that manages the whole cluster) for you. You only manage the <strong>worker nodes</strong> — the EC2 machines where your pods actually run.</p>
+    </div>
+
+    <h3>Local vs EKS</h3>
+    <table class="compare">
+      <thead>
+        <tr><th>What</th><th>Local (Docker Desktop)</th><th>EKS (AWS)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="row-label">Control plane</td><td class="local-val">You manage everything</td><td class="eks-val">AWS manages it for you</td></tr>
+        <tr><td class="row-label">Docker images</td><td class="local-val">Stored locally on your machine</td><td class="eks-val">Must be pushed to ECR (AWS registry)</td></tr>
+        <tr><td class="row-label">Metrics server</td><td class="local-val">Pre-installed</td><td class="eks-val">You install it manually</td></tr>
+        <tr><td class="row-label">Autoscaling</td><td class="local-val">Works out of box</td><td class="eks-val">Requires setup (HPA + Cluster Autoscaler)</td></tr>
+        <tr><td class="row-label">Cost</td><td class="local-val">Free</td><td class="eks-val">~$0.10/hr control plane + ~$0.04/hr per node</td></tr>
+        <tr><td class="row-label">Domain / SSL</td><td class="local-val">localhost / none</td><td class="eks-val">Real domain + free SSL via ACM</td></tr>
+        <tr><td class="row-label">Frontend hosting</td><td class="local-val">Vite dev server</td><td class="eks-val">S3 + CloudFront (static CDN)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       1. FULL ARCHITECTURE
+  ════════════════════════════════════ -->
+  <section class="section" id="architecture">
+    <div class="section-header">
+      <div class="section-num-big">01</div>
+      <div class="section-title-block">
+        <div class="section-title">Full Architecture</div>
+        <div class="section-subtitle">Frontend + backend on a single domain with a clear split</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">The Architecture</div>
+      <p>Your entire app lives on <strong>one domain</strong> (e.g. <code>www.cryboy.in</code>). CloudFront sits at the edge and decides where to send each request: anything matching <code>/api/*</code> goes to the EKS Load Balancer, everything else is served as a static file from S3. Backend microservices live inside EKS and are routed by an nginx ingress controller.</p>
+    </div>
+
+    <h3>Traffic flow</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Browser hits www.cryboy.in</div>
+          <div class="flow-detail">DNS CNAME resolves to your CloudFront distribution</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">CloudFront splits the request</div>
+          <div class="flow-detail">Path-based behaviors decide which origin handles the request: S3 for static assets, EKS Load Balancer for /api/*</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Path = / → S3 (React build)</div>
+          <div class="flow-detail">Static index.html, JS, and CSS files served directly from S3</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Path = /api/* → EKS Load Balancer</div>
+          <div class="flow-detail">Forwarded to AWS Load Balancer created by the nginx ingress controller</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">nginx Ingress reads rules</div>
+          <div class="flow-detail">Routes /api/auth → auth-service, /api/ai → ai-service, /api/sandbox → sandbox-service, etc.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot" style="background:var(--accent2)"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Service load-balances to pods</div>
+          <div class="flow-detail">Kubernetes Service finds pods via label selector and distributes traffic across replicas</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       2. INSTALL TOOLS
+  ════════════════════════════════════ -->
+  <section class="section" id="tools">
+    <div class="section-header">
+      <div class="section-num-big">02</div>
+      <div class="section-title-block">
+        <div class="section-title">Install Tools</div>
+        <div class="section-subtitle">Four tools you need before anything else</div>
+      </div>
+    </div>
+
+    <table class="flag-table">
+      <thead><tr><th>Tool</th><th>Install Command</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">AWS CLI (Mac)</span></td>
+          <td><code>brew install awscli</code></td>
+          <td class="f-desc">Lets your terminal talk to AWS. Required for ECR, IAM, EKS, S3, CloudFront, ACM operations.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AWS CLI (Windows)</span></td>
+          <td><code>msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi</code></td>
+          <td class="f-desc">Installs AWS CLI using the official MSI installer for Windows.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AWS CLI (Ubuntu/Linux)</span></td>
+          <td><code>curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" &amp;&amp; unzip awscliv2.zip &amp;&amp; sudo ./aws/install</code></td>
+          <td class="f-desc">Downloads and installs AWS CLI for Linux.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">eksctl (Mac)</span></td>
+          <td><code>brew install eksctl</code></td>
+          <td class="f-desc">Built specifically for creating and managing EKS clusters. One command replaces hours of manual AWS setup.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">eksctl (Windows)</span></td>
+          <td><code>choco install eksctl</code></td>
+          <td class="f-desc">Installs eksctl via Chocolatey on Windows.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">eksctl (Ubuntu/Linux)</span></td>
+          <td><code>curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" &amp;&amp; tar -xzf eksctl_Linux_amd64.tar.gz -C /tmp &amp;&amp; sudo mv /tmp/eksctl /usr/local/bin</code></td>
+          <td class="f-desc">Downloads and installs the latest eksctl binary for Linux.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Skaffold (Mac)</span></td>
+          <td><code>brew install skaffold</code></td>
+          <td class="f-desc">Google's dev-loop tool. Builds, tags, pushes, and deploys multiple microservices in one command. Critical for multi-service projects.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Skaffold (Windows)</span></td>
+          <td><code>choco install skaffold</code></td>
+          <td class="f-desc">Installs Skaffold via Chocolatey on Windows.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Skaffold (Ubuntu/Linux)</span></td>
+          <td><code>curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64 &amp;&amp; sudo install skaffold /usr/local/bin/</code></td>
+          <td class="f-desc">Downloads the Skaffold binary and installs it to /usr/local/bin.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">kubectl</span></td>
+          <td>Already installed ✅</td>
+          <td class="f-desc">The same kubectl you use locally. It points to EKS instead of Docker Desktop after cluster creation.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>When you create an EKS cluster with eksctl, it automatically updates your <code>~/.kube/config</code> file so kubectl talks to EKS. Skaffold reads the same kubeconfig — no extra setup needed.</p>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       3. IAM & AWS CLI
+  ════════════════════════════════════ -->
+  <section class="section" id="iam">
+    <div class="section-header">
+      <div class="section-num-big">03</div>
+      <div class="section-title-block">
+        <div class="section-title">IAM User &amp; AWS CLI Setup</div>
+        <div class="section-subtitle">Create the IAM user with the right policies, then configure CLI</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept — Why IAM matters</div>
+      <p>AWS uses <strong>IAM (Identity and Access Management)</strong> to control what each user is allowed to do. When you run <code>eksctl</code>, <code>aws ecr</code>, <code>aws s3</code>, or <code>aws cloudfront</code>, AWS checks whether your IAM user has permission. Without the right policies attached, commands fail with <em>AccessDenied</em>. This is the #1 source of "why is this failing" pain in AWS deployments.</p>
+    </div>
+
+    <h3>Step 1 — Create a dedicated IAM user</h3>
+    <p>Never use your AWS root account for CLI operations. Create a separate IAM user just for deployments.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Go to IAM → Users → Create user</div>
+          <div class="flow-detail">AWS Console → search "IAM" → Users (left sidebar) → Create user</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Name the user</div>
+          <div class="flow-detail">Something descriptive like <code>eks-deploy-user</code>. Do NOT tick "Provide user access to the AWS Management Console" — this user only needs CLI access.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Attach policies directly</div>
+          <div class="flow-detail">On the permissions step choose "Attach policies directly". Attach each policy from the table below.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot" style="background:var(--accent2)"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Create user → Create access key</div>
+          <div class="flow-detail">After the user is created → Security credentials tab → Create access key → "Command Line Interface (CLI)". Copy both keys immediately — the secret key is shown only once.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Step 2 — Required IAM policies</h3>
+    <p>Attach every policy listed below. Each one covers a different AWS service this deployment touches. Missing any single one will cause commands to fail mid-way.</p>
+
+    <table class="flag-table">
+      <thead><tr><th>Policy Name</th><th>What it allows</th><th>Why you need it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">AmazonEKSFullAccess</span></td>
+          <td class="f-desc">All EKS API actions including DescribeClusterVersions, CreateCluster, DescribeCluster</td>
+          <td class="f-why">Required for every <code>eksctl</code> command. Without this, even <code>eksctl create cluster</code> fails immediately.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AmazonEKSClusterPolicy</span></td>
+          <td class="f-desc">Lets the cluster manage AWS resources on your behalf</td>
+          <td class="f-why">Required for cluster control-plane operations.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AmazonEKSWorkerNodePolicy</span></td>
+          <td class="f-desc">Lets EC2 nodes join the EKS cluster and receive workloads</td>
+          <td class="f-why">Without this, worker nodes cannot register with the control plane.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AmazonEC2ContainerRegistryFullAccess</span></td>
+          <td class="f-desc">Create repositories, push and pull images in ECR</td>
+          <td class="f-why">Required for <code>aws ecr create-repository</code>, <code>docker push</code>, and EKS pulling images.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AmazonVPCFullAccess</span></td>
+          <td class="f-desc">Create and manage VPCs, subnets, security groups, route tables</td>
+          <td class="f-why">eksctl creates a full VPC for your cluster. Without this it fails mid-creation.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">IAMFullAccess</span></td>
+          <td class="f-desc">Create and attach IAM roles and policies</td>
+          <td class="f-why">eksctl creates IAM roles for node groups automatically. Also needed for cluster autoscaler.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AmazonEC2FullAccess</span></td>
+          <td class="f-desc">Launch, manage, and terminate EC2 instances and related resources</td>
+          <td class="f-why">EKS worker nodes are EC2 instances. eksctl needs this to provision and destroy them.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">CloudFormationFullAccess</span></td>
+          <td class="f-desc">Create and manage CloudFormation stacks</td>
+          <td class="f-why">eksctl uses CloudFormation stacks internally for every resource. Mandatory for any eksctl command.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AmazonS3FullAccess</span></td>
+          <td class="f-desc">Create buckets, upload files, set bucket policies, configure static website hosting</td>
+          <td class="f-why">Required for hosting the React frontend on S3 — bucket creation, file sync, and public-access configuration.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">CloudFrontFullAccess</span></td>
+          <td class="f-desc">Create and update CloudFront distributions, behaviors, origins, invalidations</td>
+          <td class="f-why">Required for serving the React frontend via CloudFront CDN with the API routing behavior.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AWSCertificateManagerFullAccess</span></td>
+          <td class="f-desc">Request, validate, and manage SSL/TLS certificates via ACM</td>
+          <td class="f-why">Required for the SSL certificate that CloudFront uses for your custom domain.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>If you want a shortcut for a personal learning account: attach <strong>AdministratorAccess</strong> — it covers all the above. <strong>Never do this in a production or shared account</strong> — always use the minimum permissions principle.</p>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>Never share or commit your Access Key ID or Secret Access Key.</strong> Do not paste them in code, push them to GitHub, or send them in chat. If a key leaks, go to IAM → Users → your user → Security credentials → Deactivate the key immediately, then create a new one.</p>
+    </div>
+
+    <h3>Step 3 — Configure AWS CLI</h3>
+    <div class="step-label">Run in terminal</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws configure</span></pre>
+    </div>
+
+    <p>This saves credentials to <code>~/.aws/credentials</code> and region to <code>~/.aws/config</code>. It prompts for four values:</p>
+
+    <table class="flag-table">
+      <thead><tr><th>Prompt</th><th>Value to enter</th><th>Where to find it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">AWS Access Key ID</span></td>
+          <td><span class="f-val">AKIAIOSFODNN7EXAMPLE</span></td>
+          <td class="f-desc">IAM → Users → your user → Security credentials → Access keys. Starts with AKIA.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">AWS Secret Access Key</span></td>
+          <td><span class="f-val">wJalrXUtnFEMI/K7MDENG/...</span></td>
+          <td class="f-desc">Shown only once when you created the key. If you missed it, deactivate the key and create a new one.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Default region name</span></td>
+          <td><span class="f-val">ap-southeast-1</span></td>
+          <td class="f-desc"><code>ap-southeast-1</code> = Singapore, <code>ap-south-1</code> = Mumbai. Pick the one closest to your users.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Default output format</span></td>
+          <td><span class="f-val">json</span></td>
+          <td class="f-desc">Type <code>json</code> or just press Enter for the default.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="step-label green">Verify the connection works</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws sts get-caller-identity</span>
+
+<span class="c-comment"># Expected output:</span>
+{
+    <span class="c-str">"UserId"</span>: <span class="c-str">"AIDAIOSFODNN7EXAMPLE"</span>,
+    <span class="c-str">"Account"</span>: <span class="c-str">"123456789012"</span>,
+    <span class="c-str">"Arn"</span>: <span class="c-str">"arn:aws:iam::123456789012:user/eks-deploy-user"</span>
+}</pre>
+    </div>
+    <p>If you see your account ID and username in the Arn field, your credentials are configured correctly.</p>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       4. CREATE CLUSTER
+  ════════════════════════════════════ -->
+  <section class="section" id="cluster">
+    <div class="section-header">
+      <div class="section-num-big">04</div>
+      <div class="section-title-block">
+        <div class="section-title">Create EKS Cluster</div>
+        <div class="section-subtitle">Spin up worker nodes on AWS — takes 15–20 minutes</div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">eksctl create cluster</span> \
+  <span class="c-flag">--name</span> <span class="c-val">express-cluster</span> \
+  <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span> \
+  <span class="c-flag">--nodegroup-name</span> <span class="c-val">express-nodes</span> \
+  <span class="c-flag">--node-type</span> <span class="c-val">t3.medium</span> \
+  <span class="c-flag">--nodes</span> <span class="c-val">2</span> \
+  <span class="c-flag">--nodes-min</span> <span class="c-val">1</span> \
+  <span class="c-flag">--nodes-max</span> <span class="c-val">3</span> \
+  <span class="c-flag">--managed</span></pre>
+    </div>
+
+    <table class="flag-table">
+      <thead><tr><th>Flag</th><th>Value</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">--name</span></td><td><span class="f-val">express-cluster</span></td><td class="f-desc">Cluster name. Used in all future eksctl commands.</td></tr>
+        <tr><td><span class="f-name">--region</span></td><td><span class="f-val">ap-southeast-1</span></td><td class="f-desc">AWS region where the cluster is created.</td></tr>
+        <tr><td><span class="f-name">--nodegroup-name</span></td><td><span class="f-val">express-nodes</span></td><td class="f-desc">Name of the group of worker nodes.</td></tr>
+        <tr><td><span class="f-name">--node-type</span></td><td><span class="f-val">t3.medium</span></td><td class="f-desc">EC2 instance size: 2 vCPU, 4 GB RAM. ~$0.04/hr per node.</td></tr>
+        <tr><td><span class="f-name">--nodes</span></td><td><span class="f-val">2</span></td><td class="f-desc">Starting number of worker nodes.</td></tr>
+        <tr><td><span class="f-name">--nodes-min</span></td><td><span class="f-val">1</span></td><td class="f-desc">Minimum nodes Cluster Autoscaler keeps running.</td></tr>
+        <tr><td><span class="f-name">--nodes-max</span></td><td><span class="f-val">3</span></td><td class="f-desc">Maximum nodes Cluster Autoscaler can scale up to.</td></tr>
+        <tr><td><span class="f-name">--managed</span></td><td><span class="f-val">(no value)</span></td><td class="f-desc">Makes AWS manage node OS patches and updates automatically.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p>Do not close the terminal while this runs. It takes 15–20 minutes and creates VPC, subnets, IAM roles, and EC2 instances behind the scenes.</p>
+    </div>
+
+    <h4>Common IAM errors during cluster creation</h4>
+    <table class="flag-table">
+      <thead><tr><th>Error</th><th>Cause</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">eks:DescribeClusterVersions AccessDenied</span></td>
+          <td class="f-desc">Missing AmazonEKSFullAccess policy</td>
+          <td class="f-desc">Go to IAM → your user → Add permissions → attach <code>AmazonEKSFullAccess</code></td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">cloudformation:CreateStack AccessDenied</span></td>
+          <td class="f-desc">Missing CloudFormation policy</td>
+          <td class="f-desc">Attach <code>CloudFormationFullAccess</code></td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">ec2:CreateVpc AccessDenied</span></td>
+          <td class="f-desc">Missing VPC/EC2 permissions</td>
+          <td class="f-desc">Attach <code>AmazonVPCFullAccess</code> and <code>AmazonEC2FullAccess</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="step-label green">Verify cluster is up</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get nodes</span>
+
+<span class="c-comment"># Expected output — both STATUS = Ready:</span>
+NAME                                               STATUS   AGE
+ip-192-168-5-197.ap-southeast-1.compute.internal   <span class="c-str">Ready</span>    31m
+ip-192-168-87-34.ap-southeast-1.compute.internal   <span class="c-str">Ready</span>    31m</pre>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       5. BATCH ECR SETUP
+  ════════════════════════════════════ -->
+  <section class="section" id="ecr">
+    <div class="section-header">
+      <div class="section-num-big">05</div>
+      <div class="section-title-block">
+        <div class="section-title">Batch ECR Setup</div>
+        <div class="section-subtitle">Create one ECR repository per microservice — all in a single command</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p><strong>ECR (Elastic Container Registry)</strong> is AWS's private Docker image registry. Every microservice needs its own ECR repository. With a multi-service app you do not want to create them one by one — use a loop instead.</p>
+    </div>
+
+    <h3>Step 1 — Create all ECR repositories in one shot</h3>
+    <p>Replace the service list with your own service names. This creates a repo for each in a single command:</p>
+
+    <div class="step-label">Terminal one-liner</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">for svc in</span> <span class="c-val">ai-orchestration auth notification agent router sandbox template</span><span class="c-cmd">; do</span>
+  <span class="c-cmd">aws ecr create-repository</span> <span class="c-flag">--repository-name</span> <span class="c-val">$svc</span> <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span>
+<span class="c-cmd">done</span></pre>
+    </div>
+
+    <h3>Alternative — reusable shell script</h3>
+    <p>If your team needs this regularly, save it as a script:</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">create-ecr-repos.sh</span></div>
+      <pre><span class="c-comment">#!/bin/bash</span>
+
+<span class="c-val">REGION</span>=<span class="c-str">"ap-southeast-1"</span>
+<span class="c-val">ACCOUNT_ID</span>=$(<span class="c-cmd">aws sts get-caller-identity</span> <span class="c-flag">--query</span> <span class="c-val">Account</span> <span class="c-flag">--output</span> <span class="c-val">text</span>)
+
+<span class="c-comment"># List every microservice here</span>
+<span class="c-val">SERVICES</span>=(<span class="c-str">"ai-orchestration"</span> <span class="c-str">"auth"</span> <span class="c-str">"notification"</span> <span class="c-str">"agent"</span> <span class="c-str">"router"</span> <span class="c-str">"sandbox"</span> <span class="c-str">"template"</span>)
+
+<span class="c-cmd">for</span> SERVICE <span class="c-cmd">in</span> <span class="c-str">"${SERVICES[@]}"</span><span class="c-cmd">; do</span>
+  <span class="c-cmd">echo</span> <span class="c-str">"Creating ECR repo: $SERVICE"</span>
+  <span class="c-cmd">aws ecr create-repository</span> \
+    <span class="c-flag">--repository-name</span> <span class="c-val">$SERVICE</span> \
+    <span class="c-flag">--region</span> <span class="c-val">$REGION</span>
+  <span class="c-cmd">echo</span> <span class="c-str">"✅ Done: $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$SERVICE"</span>
+<span class="c-cmd">done</span></pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal — run the script</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">chmod +x</span> <span class="c-val">create-ecr-repos.sh</span>
+<span class="c-cmd">./create-ecr-repos.sh</span></pre>
+    </div>
+
+    <h3>Step 2 — Login Docker to ECR</h3>
+    <p>You only need to do this once per terminal session (the token lasts 12 hours):</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws ecr get-login-password</span> <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span> <span class="c-pipe">|</span> \
+  <span class="c-cmd">docker login</span> <span class="c-flag">--username</span> <span class="c-val">AWS</span> \
+  <span class="c-flag">--password-stdin</span> <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com</span></pre>
+    </div>
+
+    <div class="step-label green">Verify all repos were created</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws ecr describe-repositories</span> <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span> \
+  <span class="c-flag">--query</span> <span class="c-val">"repositories[].repositoryName"</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       6. SKAFFOLD DEPLOY
+  ════════════════════════════════════ -->
+  <section class="section" id="skaffold">
+    <div class="section-header">
+      <div class="section-num-big">06</div>
+      <div class="section-title-block">
+        <div class="section-title">Skaffold Deploy</div>
+        <div class="section-subtitle">Build, push, and deploy all microservices with one command</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept — Why Skaffold for multi-service</div>
+      <p><strong>Skaffold</strong> reads a single config file listing every service in your project. With one command it builds every Docker image with the correct platform, pushes them all to their matching ECR repos with content-based digest tags, patches your Kubernetes manifests with the new digests, and applies them to the cluster. For a 7-service app, this replaces 28 manual commands with one.</p>
+    </div>
+
+    <h3>Local dev vs EKS — keep them separate</h3>
+    <p>You already have a <code>skaffold.yaml</code> for local development (uses local images, no ECR push). Create a second file specifically for EKS that prefixes every image with the ECR URI and forces <code>linux/amd64</code> builds. This way you can switch between local dev and EKS deploys without editing files.</p>
+
+    <h3>Step 1 — Create skaffold-eks.yaml in your project root</h3>
+
+    <div class="step-label">skaffold-eks.yaml</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">skaffold-eks.yaml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">skaffold/v4beta13</span>
+<span class="c-key">kind</span>: <span class="c-val">Config</span>
+
+<span class="c-key">build</span>:
+  <span class="c-key">tagPolicy</span>:
+    <span class="c-key">sha256</span>: {}
+
+  <span class="c-key">platforms</span>:
+    - <span class="c-val">linux/amd64</span>        <span class="c-comment"># EKS t3.medium nodes are x86_64 — Mac M1/M2/M3 must cross-build</span>
+
+  <span class="c-key">artifacts</span>:
+
+    - <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/ai-orchestration</span>
+      <span class="c-key">context</span>: <span class="c-val">ai-orchestration</span>
+      <span class="c-key">docker</span>:
+        <span class="c-key">dockerfile</span>: <span class="c-val">dockerfile</span>
+
+    - <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/auth</span>
+      <span class="c-key">context</span>: <span class="c-val">auth</span>
+      <span class="c-key">docker</span>:
+        <span class="c-key">dockerfile</span>: <span class="c-val">dockerfile</span>
+
+    - <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/notification</span>
+      <span class="c-key">context</span>: <span class="c-val">notification</span>
+      <span class="c-key">docker</span>:
+        <span class="c-key">dockerfile</span>: <span class="c-val">dockerfile</span>
+
+    - <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/agent</span>
+      <span class="c-key">context</span>: <span class="c-val">sandbox/agent</span>
+      <span class="c-key">docker</span>:
+        <span class="c-key">dockerfile</span>: <span class="c-val">dockerfile</span>
+
+    - <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/router</span>
+      <span class="c-key">context</span>: <span class="c-val">sandbox/router</span>
+      <span class="c-key">docker</span>:
+        <span class="c-key">dockerfile</span>: <span class="c-val">dockerfile</span>
+
+    - <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/sandbox</span>
+      <span class="c-key">context</span>: <span class="c-val">sandbox/server</span>
+      <span class="c-key">docker</span>:
+        <span class="c-key">dockerfile</span>: <span class="c-val">dockerfile</span>
+
+    - <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/template</span>
+      <span class="c-key">context</span>: <span class="c-val">sandbox/template</span>
+      <span class="c-key">docker</span>:
+        <span class="c-key">dockerfile</span>: <span class="c-val">dockerfile</span>
+
+<span class="c-key">manifests</span>:
+  <span class="c-key">rawYaml</span>:
+    - <span class="c-val">k8s/ai-deployment.yml</span>
+    - <span class="c-val">k8s/ai-service.yml</span>
+    - <span class="c-val">k8s/auth-deployment.yml</span>
+    - <span class="c-val">k8s/auth-service.yml</span>
+    - <span class="c-val">k8s/sandbox-deployment.yml</span>
+    - <span class="c-val">k8s/sandbox-service.yml</span>
+    - <span class="c-val">k8s/router-deployment.yml</span>
+    - <span class="c-val">k8s/router-service.yml</span>
+    - <span class="c-val">k8s/notification-deployment.yml</span>
+    - <span class="c-val">k8s/notification-service.yml</span>
+    - <span class="c-val">k8s/ingress.yml</span>
+    - <span class="c-val">k8s/rbac.yml</span>
+    - <span class="c-val">k8s/secrets.yml</span></pre>
+    </div>
+
+    <table class="flag-table">
+      <thead><tr><th>Key</th><th>Value</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">tagPolicy.sha256</span></td><td><span class="f-val">{}</span></td><td class="f-desc">Tags images with their content digest (sha256). Guarantees pods always pull the exact new version.</td></tr>
+        <tr><td><span class="f-name">platforms</span></td><td><span class="f-val">linux/amd64</span></td><td class="f-desc">Forces amd64 build on Apple Silicon. Without this, pods crash with "exec format error" on EKS.</td></tr>
+        <tr><td><span class="f-name">artifacts[].image</span></td><td><span class="f-val">Full ECR URI (no tag)</span></td><td class="f-desc">Skaffold appends the digest. Each artifact maps to one ECR repo.</td></tr>
+        <tr><td><span class="f-name">artifacts[].context</span></td><td><span class="f-val">folder path</span></td><td class="f-desc">Folder containing this service's Dockerfile.</td></tr>
+        <tr><td><span class="f-name">manifests.rawYaml</span></td><td><span class="f-val">list of YAML files</span></td><td class="f-desc">Skaffold applies all these manifests after building. It patches the image fields with the new digests automatically.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Step 2 — Update every deployment.yaml to reference the ECR URI</h3>
+    <p>Each microservice's deployment manifest must reference the same image URI as in skaffold-eks.yaml. Critical: the image must match exactly (without tag). If it does not match, Skaffold will not patch it and your pod will fail with <strong>can't be pulled</strong>.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">k8s/auth-deployment.yml — example</span></div>
+      <pre><span class="c-key">containers</span>:
+  - <span class="c-key">name</span>: <span class="c-val">auth-container</span>
+    <span class="c-comment"># ❌ Wrong — local name. Will fail with "auth:latest can't be pulled"</span>
+    <span class="c-key">image</span>: <span class="c-val">auth:latest</span>
+
+    <span class="c-comment"># ✅ Correct — matches the artifact in skaffold-eks.yaml exactly (no tag)</span>
+    <span class="c-key">image</span>: <span class="c-val">&lt;ACCOUNT_ID&gt;.dkr.ecr.ap-southeast-1.amazonaws.com/auth</span>
+    <span class="c-key">imagePullPolicy</span>: <span class="c-val">Always</span></pre>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>Check every single deployment.yaml.</strong> If one service still has a local image name, only that pod will fail — the rest deploy fine, but you will see the error <code>&lt;service-name&gt;:latest can't be pulled</code>. Run <code>grep -r "image:" k8s/</code> to audit all files at once.</p>
+    </div>
+
+    <h3>Step 3 — Run Skaffold</h3>
+
+    <div class="step-label">Deploy everything once</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">skaffold run</span> <span class="c-flag">-f</span> <span class="c-val">skaffold-eks.yaml</span></pre>
+    </div>
+    <p>Builds every image with linux/amd64, pushes each to its ECR repo with a sha256 digest tag, patches the manifests with the new digests, and applies everything. Resources stay live after the command exits.</p>
+
+    <div class="step-label gold">Important — use `run` not `dev` for EKS</div>
+    <p><code>skaffold dev</code> watches files and tears down everything on Ctrl+C. <code>skaffold run</code> deploys once and exits, leaving your app running. Always use <code>run</code> for EKS — <code>dev</code> is for local Docker Desktop only.</p>
+
+    <div class="step-label green">Verify all pods are running</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get pods</span>
+
+<span class="c-comment"># Every pod should show: 1/1 Running</span>
+NAME                                       READY   STATUS    AGE
+ai-deployment-645686bfbb-5dh2x             1/1     Running   8m
+auth-deployment-6c464c5479-rj6zc           1/1     Running   8m
+notification-deployment-c9c4c4dcc-h8zrk    1/1     Running   8m
+router-deployment-59dc69ccfd-jfgwb         1/1     Running   8m
+sandbox-deployment-6766879bcc-m69bg        1/1     Running   8m</pre>
+    </div>
+
+    <h3>Common Skaffold errors</h3>
+    <table class="flag-table">
+      <thead><tr><th>Error</th><th>Cause</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">no basic auth credentials</span></td>
+          <td class="f-desc">Docker not logged in to ECR</td>
+          <td class="f-desc">Re-run <code>aws ecr get-login-password | docker login</code>. Token expires every 12h.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">exec format error</span></td>
+          <td class="f-desc">Image built for arm64 instead of amd64</td>
+          <td class="f-desc">Add <code>platforms: [linux/amd64]</code> to the build section of skaffold-eks.yaml</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">&lt;service&gt;:latest can't be pulled</span></td>
+          <td class="f-desc">deployment.yaml still has local image name</td>
+          <td class="f-desc">Update that deployment to use the full ECR URI matching skaffold-eks.yaml exactly</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">manifest unknown</span></td>
+          <td class="f-desc">ECR repository does not exist</td>
+          <td class="f-desc">Re-run the batch ECR creation script for the missing service</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       7. INGRESS CONTROLLER
+  ════════════════════════════════════ -->
+  <section class="section" id="ingress">
+    <div class="section-header">
+      <div class="section-num-big">07</div>
+      <div class="section-title-block">
+        <div class="section-title">nginx Ingress Controller</div>
+        <div class="section-subtitle">The pod that receives external traffic and creates an AWS Load Balancer</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>Your <strong>ingress.yml</strong> is just a set of rules — which path goes to which service. It does nothing without an <strong>Ingress Controller</strong>, the actual nginx pod that reads those rules and routes real traffic. On EKS, installing the controller also automatically provisions an AWS Network Load Balancer, giving you a public hostname.</p>
+    </div>
+
+    <div class="step-label">Install the ingress controller</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl apply -f</span> \
+  <span class="c-val">https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml</span></pre>
+    </div>
+
+    <div class="step-label green">Get the Load Balancer URL</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get service -n ingress-nginx</span>
+
+<span class="c-comment"># Look for EXTERNAL-IP — this is your Load Balancer hostname:</span>
+NAME                       TYPE           EXTERNAL-IP
+ingress-nginx-controller   LoadBalancer   <span class="c-str">a8eacd25575f94fbb9b793f1a89a9d24-532281847.ap-southeast-1.elb.amazonaws.com</span></pre>
+    </div>
+    <p>Copy this URL. You will use it as an origin in CloudFront (Section 12) and optionally as a CNAME for wildcard subdomains.</p>
+
+    <h3>Example ingress.yml for multi-service routing</h3>
+    <p>This is the actual ingress used in this deployment — routes <code>/api/*</code> paths to backend services, plus wildcard subdomains for the router service:</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">k8s/ingress.yml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">networking.k8s.io/v1</span>
+<span class="c-key">kind</span>: <span class="c-val">Ingress</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">codespace-ingress</span>
+  <span class="c-key">annotations</span>:
+    <span class="c-key">nginx.ingress.kubernetes.io/proxy-read-timeout</span>: <span class="c-str">"6000"</span>
+    <span class="c-key">nginx.ingress.kubernetes.io/proxy-send-timeout</span>: <span class="c-str">"6000"</span>
+    <span class="c-key">nginx.ingress.kubernetes.io/proxy-connect-timeout</span>: <span class="c-str">"6000"</span>
+    <span class="c-key">nginx.ingress.kubernetes.io/affinity</span>: <span class="c-str">"cookie"</span>
+    <span class="c-key">nginx.ingress.kubernetes.io/session-cookie-name</span>: <span class="c-str">"route"</span>
+<span class="c-key">spec</span>:
+  <span class="c-key">ingressClassName</span>: <span class="c-val">nginx</span>
+  <span class="c-key">rules</span>:
+  - <span class="c-key">http</span>:
+      <span class="c-key">paths</span>:
+      - <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>
+        <span class="c-key">path</span>: <span class="c-val">"/api/auth"</span>
+        <span class="c-key">backend</span>:
+          <span class="c-key">service</span>:
+            <span class="c-key">name</span>: <span class="c-val">auth-service</span>
+            <span class="c-key">port</span>:
+              <span class="c-key">number</span>: <span class="c-val">80</span>
+      - <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>
+        <span class="c-key">path</span>: <span class="c-val">"/api/ai"</span>
+        <span class="c-key">backend</span>:
+          <span class="c-key">service</span>:
+            <span class="c-key">name</span>: <span class="c-val">ai-service</span>
+            <span class="c-key">port</span>:
+              <span class="c-key">number</span>: <span class="c-val">80</span>
+      - <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>
+        <span class="c-key">path</span>: <span class="c-val">"/api/sandbox"</span>
+        <span class="c-key">backend</span>:
+          <span class="c-key">service</span>:
+            <span class="c-key">name</span>: <span class="c-val">sandbox-service</span>
+            <span class="c-key">port</span>:
+              <span class="c-key">number</span>: <span class="c-val">80</span>
+
+  - <span class="c-key">host</span>: <span class="c-str">"*.preview.cryboy.in"</span>
+    <span class="c-key">http</span>:
+      <span class="c-key">paths</span>:
+      - <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>
+        <span class="c-key">path</span>: <span class="c-val">"/"</span>
+        <span class="c-key">backend</span>:
+          <span class="c-key">service</span>:
+            <span class="c-key">name</span>: <span class="c-val">router-service</span>
+            <span class="c-key">port</span>:
+              <span class="c-key">number</span>: <span class="c-val">80</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><code>-n ingress-nginx</code> means "look in the ingress-nginx namespace". The ingress controller installs in its own namespace, not the default one where your pods live.</p>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       8. VERIFY BACKEND
+  ════════════════════════════════════ -->
+  <section class="section" id="verify-backend">
+    <div class="section-header">
+      <div class="section-num-big">08</div>
+      <div class="section-title-block">
+        <div class="section-title">Verify Backend End-to-End</div>
+        <div class="section-subtitle">Make sure all microservices are healthy before moving to the frontend</div>
+      </div>
+    </div>
+
+    <h3>Monitoring commands</h3>
+    <table class="flag-table">
+      <thead><tr><th>Command</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">kubectl get pods</span></td><td class="f-desc">Status of every pod. All should be 1/1 Running.</td></tr>
+        <tr><td><span class="f-name">kubectl get pods -w</span></td><td class="f-desc">Watch live — refreshes every time something changes.</td></tr>
+        <tr><td><span class="f-name">kubectl get all</span></td><td class="f-desc">Pods, deployments, services, replicasets — all at once.</td></tr>
+        <tr><td><span class="f-name">kubectl get nodes</span></td><td class="f-desc">Worker EC2 health. Should show Ready.</td></tr>
+        <tr><td><span class="f-name">kubectl get services</span></td><td class="f-desc">All Services and their ClusterIPs and ports.</td></tr>
+        <tr><td><span class="f-name">kubectl get ingress</span></td><td class="f-desc">Ingress rules and Load Balancer URL (ADDRESS column).</td></tr>
+        <tr><td><span class="f-name">kubectl top pods</span></td><td class="f-desc">CPU and memory usage per pod (needs metrics server).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Debug commands</h3>
+    <table class="flag-table">
+      <thead><tr><th>Command</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">kubectl describe pod &lt;name&gt;</span></td><td class="f-desc">Detailed pod info. Events section at the bottom tells you exactly what failed.</td></tr>
+        <tr><td><span class="f-name">kubectl logs &lt;name&gt;</span></td><td class="f-desc">Console output from your app inside that pod.</td></tr>
+        <tr><td><span class="f-name">kubectl logs &lt;name&gt; -f</span></td><td class="f-desc">Follow logs live like tail -f.</td></tr>
+        <tr><td><span class="f-name">kubectl logs &lt;name&gt; --tail=100</span></td><td class="f-desc">Just the last 100 lines.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="step-label green">Test the Load Balancer directly</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">curl -I http://&lt;your-load-balancer-url&gt;/api/auth</span>
+<span class="c-comment"># Should return a response from your auth service (200, 401, or 404 from your app — not from nginx)</span>
+<span class="c-comment"># The X-Powered-By: Express header confirms the request reached your pod</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       9. ACM SSL CERTIFICATE
+  ════════════════════════════════════ -->
+  <section class="section" id="acm">
+    <div class="section-header">
+      <div class="section-num-big">09</div>
+      <div class="section-title-block">
+        <div class="section-title">ACM SSL Certificate</div>
+        <div class="section-subtitle">Request before CloudFront — order matters</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Critical — Order of operations</div>
+      <p>CloudFront requires an SSL certificate to use a custom domain like <code>www.cryboy.in</code>. The certificate must be <strong>validated and ISSUED before</strong> you create the CloudFront distribution — if it is still pending, CloudFront rejects it with <em>InvalidViewerCertificate</em>. Always do ACM first, wait until it shows ISSUED, then create CloudFront.</p>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>ACM certificates for CloudFront MUST be in us-east-1.</strong> CloudFront only accepts certificates from us-east-1 (N. Virginia) regardless of where your other resources are. If you create the cert in any other region, CloudFront cannot use it.</p>
+    </div>
+
+    <h3>Step 1 — Request the certificate</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws acm request-certificate</span> \
+  <span class="c-flag">--domain-name</span> <span class="c-val">cryboy.in</span> \
+  <span class="c-flag">--subject-alternative-names</span> <span class="c-val">"*.cryboy.in"</span> \
+  <span class="c-flag">--validation-method</span> <span class="c-val">DNS</span> \
+  <span class="c-flag">--region</span> <span class="c-val">us-east-1</span></pre>
+    </div>
+
+    <p>Returns a CertificateArn like:</p>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Response</span></div>
+      <pre>{
+    <span class="c-str">"CertificateArn"</span>: <span class="c-str">"arn:aws:acm:us-east-1:329599656829:certificate/065ee0d2-887e-460f-b6eb-6c10684e4895"</span>
+}</pre>
+    </div>
+    <p>Save this ARN — you will pass it to CloudFront in the next section.</p>
+
+    <h3>Step 2 — Get the DNS validation record</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws acm describe-certificate</span> \
+  <span class="c-flag">--certificate-arn</span> <span class="c-val">&lt;YOUR_CERT_ARN&gt;</span> \
+  <span class="c-flag">--region</span> <span class="c-val">us-east-1</span> \
+  <span class="c-flag">--query</span> <span class="c-val">"Certificate.DomainValidationOptions"</span></pre>
+    </div>
+
+    <p>Returns the CNAME you need to add to DNS:</p>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Response</span></div>
+      <pre>{
+  <span class="c-str">"ResourceRecord"</span>: {
+    <span class="c-str">"Name"</span>: <span class="c-str">"_18fdf25abc2491e0e5cdf8b20ac9578a.cryboy.in."</span>,
+    <span class="c-str">"Type"</span>: <span class="c-str">"CNAME"</span>,
+    <span class="c-str">"Value"</span>: <span class="c-str">"_6b94eb7f375219e602eeadb0371334fe.jkddzztszm.acm-validations.aws."</span>
+  }
+}</pre>
+    </div>
+
+    <h3>Step 3 — Add the CNAME in your DNS provider</h3>
+    <p>Open your DNS provider's dashboard and add a CNAME record with:</p>
+
+    <table class="flag-table">
+      <thead><tr><th>Field</th><th>Value</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">Type</span></td>
+          <td><span class="f-val">CNAME</span></td>
+          <td class="f-desc">—</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Name / Host</span></td>
+          <td><span class="f-val">_18fdf25abc2491e0e5cdf8b20ac9578a</span></td>
+          <td class="f-desc"><strong>Strip the domain suffix.</strong> ACM gives you <code>_xxx.cryboy.in.</code> but most DNS providers append the domain automatically — paste only the subdomain part.</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">Data / Value</span></td>
+          <td><span class="f-val">_6b94eb7f375219e602eeadb0371334fe.jkddzztszm.acm-validations.aws</span></td>
+          <td class="f-desc">Remove the trailing dot if your provider rejects it.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>Common mistake:</strong> Pasting the Name as <code>_xxx.cryboy.in</code> instead of <code>_xxx</code>. The DNS provider then stores it as <code>_xxx.cryboy.in.cryboy.in</code> and ACM cannot find it. If validation stays pending for over 15 minutes, this is almost always the reason.</p>
+    </div>
+
+    <h3>Step 4 — Wait for ISSUED status</h3>
+    <p>ACM polls your DNS every few minutes. Run this every 2-3 minutes until it returns <code>"ISSUED"</code>:</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws acm describe-certificate</span> \
+  <span class="c-flag">--certificate-arn</span> <span class="c-val">&lt;YOUR_CERT_ARN&gt;</span> \
+  <span class="c-flag">--region</span> <span class="c-val">us-east-1</span> \
+  <span class="c-flag">--query</span> <span class="c-val">"Certificate.Status"</span></pre>
+    </div>
+
+    <p>Typically takes 5–15 minutes after the DNS record is correctly set. Once it returns <code>"ISSUED"</code> you can move to CloudFront. Until then, every CloudFront create-distribution call will fail with <em>InvalidViewerCertificate</em>.</p>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       10. S3 BUCKET SETUP
+  ════════════════════════════════════ -->
+  <section class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num-big">10</div>
+      <div class="section-title-block">
+        <div class="section-title">S3 Bucket for React Frontend</div>
+        <div class="section-subtitle">Build React, create a public bucket, sync the dist folder</div>
+      </div>
+    </div>
+
+    <h3>Step 1 — Configure React for production API calls</h3>
+    <p>In dev, Vite proxies <code>/api/*</code> to your local backend. In production CloudFront will route <code>/api/*</code> for you, so your React code can keep using relative paths like <code>/api/auth/login</code> — <strong>no code changes needed</strong>. The build output will work as-is.</p>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>If your React code uses absolute URLs (e.g. <code>http://localhost:3000/api/...</code>), replace them with relative paths (<code>/api/...</code>) or use an env variable like <code>VITE_API_BASE_URL</code>. Relative paths are simpler — CloudFront handles the routing.</p>
+    </div>
+
+    <h3>Step 2 — Build the React app</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">cd</span> <span class="c-val">frontend</span>
+<span class="c-cmd">npm run build</span>
+<span class="c-comment"># Vite outputs static files to ./dist</span></pre>
+    </div>
+
+    <h3>Step 3 — Create the S3 bucket</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws s3 mb</span> <span class="c-val">s3://cryboy-frontend</span> <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span></pre>
+    </div>
+
+    <h3>Step 4 — Disable Block Public Access</h3>
+    <p>S3 buckets are private by default. CloudFront needs to read the files, so disable the block:</p>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws s3api put-public-access-block</span> \
+  <span class="c-flag">--bucket</span> <span class="c-val">cryboy-frontend</span> \
+  <span class="c-flag">--public-access-block-configuration</span> \
+  <span class="c-val">"BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"</span></pre>
+    </div>
+
+    <h3>Step 5 — Enable static website hosting</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws s3 website</span> <span class="c-val">s3://cryboy-frontend</span> \
+  <span class="c-flag">--index-document</span> <span class="c-val">index.html</span> \
+  <span class="c-flag">--error-document</span> <span class="c-val">index.html</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Set the error document to index.html too.</strong> This is critical for React Router. Without it, direct URLs like <code>cryboy.in/dashboard</code> return a 403 instead of loading your SPA. The same fix is also done at the CloudFront layer in Section 11.</p>
+    </div>
+
+    <h3>Step 6 — Set bucket policy for public read</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws s3api put-bucket-policy</span> \
+  <span class="c-flag">--bucket</span> <span class="c-val">cryboy-frontend</span> \
+  <span class="c-flag">--policy</span> <span class="c-val">'{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::cryboy-frontend/*"
+    }]
+  }'</span></pre>
+    </div>
+
+    <h3>Step 7 — Upload dist/ to S3</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws s3 sync</span> <span class="c-val">dist/</span> <span class="c-val">s3://cryboy-frontend</span> <span class="c-flag">--delete</span></pre>
+    </div>
+
+    <table class="flag-table">
+      <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">sync</span></td><td class="f-desc">Uploads only changed files — faster than <code>cp --recursive</code>.</td></tr>
+        <tr><td><span class="f-name">--delete</span></td><td class="f-desc">Removes files from S3 that no longer exist in dist/. Essential — otherwise old chunks accumulate and serve broken JS.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="step-label green">Verify upload</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws s3 ls</span> <span class="c-val">s3://cryboy-frontend</span>
+<span class="c-comment"># Should list index.html, assets/, etc.</span>
+
+<span class="c-cmd">curl -I</span> <span class="c-val">http://cryboy-frontend.s3-website-ap-southeast-1.amazonaws.com</span>
+<span class="c-comment"># Should return 200 — confirms the S3 website endpoint works directly</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       11. CLOUDFRONT SETUP
+  ════════════════════════════════════ -->
+  <section class="section" id="cloudfront">
+    <div class="section-header">
+      <div class="section-num-big">11</div>
+      <div class="section-title-block">
+        <div class="section-title">CloudFront Distribution</div>
+        <div class="section-subtitle">Serve the React app over HTTPS with your custom domain</div>
+      </div>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p>Before creating CloudFront, verify your ACM certificate is <code>ISSUED</code>. If it is still <code>PENDING_VALIDATION</code>, CloudFront will reject the request with <em>InvalidViewerCertificate</em>.</p>
+    </div>
+
+    <h3>Step 1 — Create the CloudFront distribution</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws cloudfront create-distribution</span> \
+  <span class="c-flag">--distribution-config</span> <span class="c-val">'{
+    "CallerReference": "cryboy-frontend-1",
+    "Origins": {
+      "Quantity": 1,
+      "Items": [{
+        "Id": "S3-cryboy-frontend",
+        "DomainName": "cryboy-frontend.s3-website-ap-southeast-1.amazonaws.com",
+        "CustomOriginConfig": {
+          "HTTPPort": 80,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only"
+        }
+      }]
+    },
+    "DefaultCacheBehavior": {
+      "TargetOriginId": "S3-cryboy-frontend",
+      "ViewerProtocolPolicy": "redirect-to-https",
+      "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+      "Compress": true
+    },
+    "Aliases": {
+      "Quantity": 1,
+      "Items": ["www.cryboy.in"]
+    },
+    "ViewerCertificate": {
+      "ACMCertificateArn": "&lt;YOUR_ACM_CERT_ARN&gt;",
+      "SSLSupportMethod": "sni-only",
+      "MinimumProtocolVersion": "TLSv1.2_2021"
+    },
+    "Enabled": true,
+    "HttpVersion": "http2",
+    "DefaultRootObject": "index.html",
+    "Comment": "cryboy frontend"
+  }'</span></pre>
+    </div>
+
+    <table class="flag-table">
+      <thead><tr><th>Key</th><th>Value</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">DomainName</span></td><td><span class="f-val">cryboy-frontend.s3-website-...</span></td><td class="f-desc">The S3 <strong>website endpoint</strong>, not the bucket REST endpoint. The website endpoint handles index documents and error pages properly.</td></tr>
+        <tr><td><span class="f-name">OriginProtocolPolicy</span></td><td><span class="f-val">http-only</span></td><td class="f-desc">S3 website endpoints don't support HTTPS directly. CloudFront still serves HTTPS to viewers.</td></tr>
+        <tr><td><span class="f-name">ViewerProtocolPolicy</span></td><td><span class="f-val">redirect-to-https</span></td><td class="f-desc">Forces all viewer traffic to HTTPS.</td></tr>
+        <tr><td><span class="f-name">CachePolicyId</span></td><td><span class="f-val">658327ea-f89d-...</span></td><td class="f-desc">AWS's built-in <strong>CachingOptimized</strong> policy. Good defaults for static assets.</td></tr>
+        <tr><td><span class="f-name">Aliases</span></td><td><span class="f-val">www.cryboy.in</span></td><td class="f-desc">Your custom domain. Must match the ACM certificate's subject names.</td></tr>
+      </tbody>
+    </table>
+
+    <p>The response contains the distribution ID (e.g. <code>E1INMLV41YBB7E</code>) and CloudFront domain (e.g. <code>d3nmrq0jxugnpu.cloudfront.net</code>). Save both — you need them for DNS and for adding the API behavior next.</p>
+
+    <h3>Step 2 — Add custom error responses for React Router</h3>
+    <p>React Router uses client-side routing — direct URLs like <code>www.cryboy.in/dashboard</code> are not real S3 files. Without this fix, CloudFront returns a 403/404 for any non-root URL. The fix is to serve <code>/index.html</code> with status 200 for both error codes, so React Router can handle the route on page load.</p>
+
+    <p>Do this in the AWS Console — it's clearer than the JSON:</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Open CloudFront Console → your distribution</div>
+          <div class="flow-detail">Find the distribution by ID and click in</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Click Error pages tab → Create custom error response</div>
+          <div class="flow-detail">Two records to create — one for 403 and one for 404</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot" style="background:var(--accent2)"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">For each: code → /index.html → 200</div>
+          <div class="flow-detail">HTTP error code: 403, Response page path: /index.html, HTTP response code: 200. Save. Then repeat for 404.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       12. API ROUTING VIA CF
+  ════════════════════════════════════ -->
+  <section class="section" id="cloudfront-api">
+    <div class="section-header">
+      <div class="section-num-big">12</div>
+      <div class="section-title-block">
+        <div class="section-title">API Routing via CloudFront</div>
+        <div class="section-subtitle">Single-domain split: /api/* → EKS, everything else → S3</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept — Single domain, two origins</div>
+      <p>To serve frontend and backend from the <strong>same domain</strong>, CloudFront uses path-based routing. You add the EKS Load Balancer as a <strong>second origin</strong>, then create a <strong>behavior</strong> that routes <code>/api/*</code> requests to EKS while the default behavior keeps serving S3 for everything else. Your React code can use relative <code>/api/...</code> URLs and they just work.</p>
+    </div>
+
+    <h3>Do this in the AWS Console — it's faster and less error-prone than CLI</h3>
+
+    <h4>Step 1 — Add EKS Load Balancer as a second origin</h4>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">CloudFront → your distribution → Origins tab → Create origin</div>
+          <div class="flow-detail">—</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Origin domain</div>
+          <div class="flow-detail">Paste your EKS Load Balancer URL (from <code>kubectl get svc -n ingress-nginx</code>)</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Protocol: HTTP only · Port: 80</div>
+          <div class="flow-detail">nginx ingress serves plain HTTP. HTTPS is handled at the CloudFront edge.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot" style="background:var(--accent2)"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Name: EKS-backend → Save</div>
+          <div class="flow-detail">Distinct name from the S3 origin so you can target it in a behavior</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Step 2 — Create a behavior for /api/*</h4>
+    <table class="flag-table">
+      <thead><tr><th>Field</th><th>Value</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">Path pattern</span></td><td><span class="f-val">/api/*</span></td><td class="f-desc">Matches any URL starting with /api/. The default behavior (S3) handles everything else.</td></tr>
+        <tr><td><span class="f-name">Origin</span></td><td><span class="f-val">EKS-backend</span></td><td class="f-desc">Route matched requests to your EKS Load Balancer.</td></tr>
+        <tr><td><span class="f-name">Viewer protocol policy</span></td><td><span class="f-val">Redirect HTTP to HTTPS</span></td><td class="f-desc">Force HTTPS for all API calls.</td></tr>
+        <tr><td><span class="f-name">Allowed HTTP methods</span></td><td><span class="f-val">GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE</span></td><td class="f-desc">APIs need every method, not just GET. Default behavior allows only GET, HEAD — that breaks POST requests.</td></tr>
+        <tr><td><span class="f-name">Cache policy</span></td><td><span class="f-val">CachingDisabled</span></td><td class="f-desc">Never cache API responses — they are dynamic and per-user. CloudFront has a built-in policy named exactly "CachingDisabled".</td></tr>
+        <tr><td><span class="f-name">Origin request policy</span></td><td><span class="f-val">AllViewer</span></td><td class="f-desc">Forwards all viewer headers, cookies, and query strings to your backend. Required for auth cookies and request bodies.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>If you forget to enable POST/PUT/DELETE</strong> on the behavior, your API will appear to work for GET requests but break on login, sign-up, or any form submission. Symptoms: 405 Method Not Allowed or requests silently returning the S3 HTML instead of the API JSON.</p>
+    </div>
+
+    <h3>Step 3 — Wait for the distribution to redeploy</h3>
+    <p>Any change to CloudFront triggers a global redeploy. Status moves from <code>Deployed</code> → <code>InProgress</code> → <code>Deployed</code> again, takes 10–15 minutes.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">aws cloudfront get-distribution</span> \
+  <span class="c-flag">--id</span> <span class="c-val">&lt;DISTRIBUTION_ID&gt;</span> \
+  <span class="c-flag">--query</span> <span class="c-val">"Distribution.Status"</span> \
+  <span class="c-flag">--output</span> <span class="c-val">text</span>
+<span class="c-comment"># Run every 2-3 minutes until it returns "Deployed"</span></pre>
+    </div>
+
+    <div class="step-label green">Verify both origins respond correctly</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">curl -I</span> <span class="c-val">https://www.cryboy.in</span>
+<span class="c-comment"># Should return 200 from CloudFront with server: AmazonS3 → React app is served</span>
+
+<span class="c-cmd">curl -I</span> <span class="c-val">https://www.cryboy.in/api/auth</span>
+<span class="c-comment"># Should hit the auth service — look for X-Powered-By: Express in the response</span>
+<span class="c-comment"># If you see server: AmazonS3 instead, the /api/* behavior is missing or wrong</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       13. DNS CONFIGURATION
+  ════════════════════════════════════ -->
+  <section class="section" id="dns">
+    <div class="section-header">
+      <div class="section-num-big">13</div>
+      <div class="section-title-block">
+        <div class="section-title">DNS Configuration</div>
+        <div class="section-subtitle">Point www and wildcards to the right destinations</div>
+      </div>
+    </div>
+
+    <h3>The records you need</h3>
+    <table class="flag-table">
+      <thead><tr><th>Type</th><th>Name</th><th>Value</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name">CNAME</span></td>
+          <td><span class="f-val">www</span></td>
+          <td><span class="f-val">&lt;CloudFront-domain&gt;.cloudfront.net</span></td>
+          <td class="f-desc">Main domain → CloudFront → S3 + EKS via behaviors</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">CNAME</span></td>
+          <td><span class="f-val">*</span></td>
+          <td><span class="f-val">&lt;EKS-LoadBalancer-URL&gt;</span></td>
+          <td class="f-desc">Wildcard for any preview/agent subdomains routed directly via ingress</td>
+        </tr>
+        <tr>
+          <td><span class="f-name">CNAME</span></td>
+          <td><span class="f-val">_xxx (ACM validation)</span></td>
+          <td><span class="f-val">_yyy.acm-validations.aws</span></td>
+          <td class="f-desc">Keep the ACM validation record permanently — ACM re-checks it for renewals</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="step-label green">Verify DNS resolves correctly</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">nslookup</span> <span class="c-val">www.cryboy.in</span>
+<span class="c-comment"># Should return a CloudFront edge IP (and a chain through the cloudfront.net CNAME)</span>
+
+<span class="c-cmd">nslookup</span> <span class="c-val">test.preview.cryboy.in</span>
+<span class="c-comment"># Should return the EKS Load Balancer hostname/IP</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">⏱️</div>
+      <p>DNS changes take <strong>5–30 minutes</strong> to propagate globally, sometimes longer depending on your TTL. If your provider has a 4-hour TTL on the old record, the cached version may stick around. Set TTL to something low (300s) when first setting up so iteration is fast.</p>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       14. AUTOSCALING
+  ════════════════════════════════════ -->
+  <section class="section" id="autoscaling">
+    <div class="section-header">
+      <div class="section-num-big">14</div>
+      <div class="section-title-block">
+        <div class="section-title">Autoscaling on EKS</div>
+        <div class="section-subtitle">Two levels — pods and nodes — both need setup</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept — Two types of autoscaling</div>
+      <p><strong>HPA (Horizontal Pod Autoscaler)</strong> adds or removes pods based on CPU. <strong>Cluster Autoscaler</strong> adds or removes EC2 nodes when pods cannot be scheduled. Both are disabled by default on EKS because AWS does not know your scaling limits or budget. You install and configure both yourself.</p>
+    </div>
+
+    <h3>Level 1 — Pod Autoscaling (HPA)</h3>
+    <p>HPA needs a metrics server to read CPU usage. EKS does not have one pre-installed.</p>
+
+    <div class="step-label">Install Metrics Server</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl apply -f</span> \
+  <span class="c-val">https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml</span></pre>
+    </div>
+
+    <div class="step-label">Create HPA for a service</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl autoscale deployment</span> <span class="c-val">auth-deployment</span> \
+  <span class="c-flag">--min</span>=<span class="c-val">1</span> \
+  <span class="c-flag">--max</span>=<span class="c-val">5</span> \
+  <span class="c-flag">--cpu-percent</span>=<span class="c-val">50</span></pre>
+    </div>
+
+    <h3>Level 2 — Node Autoscaling (Cluster Autoscaler)</h3>
+    <p>Without this, HPA adds pods but they get stuck Pending when nodes are full. Cluster Autoscaler adds new EC2 nodes automatically.</p>
+
+    <div class="step-label">Step 1 — Enable OIDC</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">eksctl utils associate-iam-oidc-provider</span> \
+  <span class="c-flag">--cluster</span> <span class="c-val">express-cluster</span> \
+  <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span> \
+  <span class="c-flag">--approve</span></pre>
+    </div>
+
+    <div class="step-label">Step 2 — Create IAM service account</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">eksctl create iamserviceaccount</span> \
+  <span class="c-flag">--cluster</span> <span class="c-val">express-cluster</span> \
+  <span class="c-flag">--namespace</span> <span class="c-val">kube-system</span> \
+  <span class="c-flag">--name</span> <span class="c-val">cluster-autoscaler</span> \
+  <span class="c-flag">--attach-policy-arn</span> <span class="c-val">arn:aws:iam::aws:policy/AutoScalingFullAccess</span> \
+  <span class="c-flag">--approve</span></pre>
+    </div>
+
+    <div class="step-label">Step 3 — Install Cluster Autoscaler</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl apply -f</span> \
+  <span class="c-val">https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml</span>
+
+<span class="c-cmd">kubectl -n kube-system set env deployment/cluster-autoscaler</span> \
+  <span class="c-val">CLUSTER_NAME=express-cluster</span></pre>
+    </div>
+
+    <h3>Full autoscaling picture</h3>
+    <div class="scale-diagram">
+      <span class="hi">Traffic spike hits</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="hi">CPU per pod exceeds 50%</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="green">HPA adds more pods</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="hi">Nodes run out of space</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="green">Cluster Autoscaler adds new EC2 node</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="green">Pending pods get scheduled ✅</span>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       15. UPDATING SERVICES
+  ════════════════════════════════════ -->
+  <section class="section" id="updates">
+    <div class="section-header">
+      <div class="section-num-big">15</div>
+      <div class="section-title-block">
+        <div class="section-title">Updating Services</div>
+        <div class="section-subtitle">Roll out backend code changes and React rebuilds</div>
+      </div>
+    </div>
+
+    <h3>Update one or more microservices</h3>
+    <p>Skaffold detects which contexts have changed and rebuilds only those. Just re-run the same command:</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">skaffold run</span> <span class="c-flag">-f</span> <span class="c-val">skaffold-eks.yaml</span></pre>
+    </div>
+    <p>Each changed service gets a new sha256 digest, gets pushed to ECR, and the deployment is patched. Kubernetes rolls out new pods with zero downtime — old pods stay alive until the new ones are Ready.</p>
+
+    <h3>Rollback a bad deploy</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl rollout undo deployment</span> <span class="c-val">auth-deployment</span>
+<span class="c-comment"># Rolls back to the previous revision instantly</span>
+
+<span class="c-cmd">kubectl rollout history deployment</span> <span class="c-val">auth-deployment</span>
+<span class="c-comment"># Lists all revisions so you can roll back to a specific one</span></pre>
+    </div>
+
+    <h3>Update React frontend</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">cd</span> <span class="c-val">frontend</span>
+<span class="c-cmd">npm run build</span>
+<span class="c-cmd">aws s3 sync</span> <span class="c-val">dist/</span> <span class="c-val">s3://cryboy-frontend</span> <span class="c-flag">--delete</span>
+
+<span class="c-comment"># Invalidate CloudFront cache so users immediately get the new build</span>
+<span class="c-cmd">aws cloudfront create-invalidation</span> \
+  <span class="c-flag">--distribution-id</span> <span class="c-val">&lt;DISTRIBUTION_ID&gt;</span> \
+  <span class="c-flag">--paths</span> <span class="c-val">"/*"</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Always invalidate after a frontend deploy.</strong> CloudFront caches your old <code>index.html</code> for hours — without invalidation users keep seeing the old version even after the new files are in S3. The <code>/*</code> path clears the whole cache. Each CloudFront account gets 1,000 free invalidations per month.</p>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       16. CLEANUP
+  ════════════════════════════════════ -->
+  <section class="section" id="cleanup">
+    <div class="section-header">
+      <div class="section-num-big">16</div>
+      <div class="section-title-block">
+        <div class="section-title">Cleanup</div>
+        <div class="section-subtitle">Stop AWS charges when you are done</div>
+      </div>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p>EKS worker nodes cost ~$0.04/hr per node plus ~$0.10/hr for the control plane. CloudFront and S3 are cheap but not free. Always tear down resources when you stop using them.</p>
+    </div>
+
+    <div class="step-label">Delete the entire EKS cluster</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">eksctl delete cluster</span> \
+  <span class="c-flag">--name</span> <span class="c-val">express-cluster</span> \
+  <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span></pre>
+    </div>
+    <p>Deletes the cluster, all EC2 nodes, VPC, subnets, IAM roles — everything eksctl created.</p>
+
+    <div class="step-label blue">Delete CloudFront + S3</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-comment"># 1. Disable CloudFront distribution first (takes ~15 mins)</span>
+<span class="c-comment">#    Console: CloudFront → distribution → Disable → wait for "Deployed" → Delete</span>
+
+<span class="c-comment"># 2. Then empty and delete S3 bucket</span>
+<span class="c-cmd">aws s3 rm</span> <span class="c-val">s3://cryboy-frontend</span> <span class="c-flag">--recursive</span>
+<span class="c-cmd">aws s3 rb</span> <span class="c-val">s3://cryboy-frontend</span></pre>
+    </div>
+
+    <div class="step-label blue">Delete ECR repositories</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">for svc in</span> <span class="c-val">ai-orchestration auth notification agent router sandbox template</span><span class="c-cmd">; do</span>
+  <span class="c-cmd">aws ecr delete-repository</span> <span class="c-flag">--repository-name</span> <span class="c-val">$svc</span> <span class="c-flag">--region</span> <span class="c-val">ap-southeast-1</span> <span class="c-flag">--force</span>
+<span class="c-cmd">done</span></pre>
+    </div>
+
+    <div class="step-label blue">Remove only the app (keep cluster)</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">skaffold delete</span> <span class="c-flag">-f</span> <span class="c-val">skaffold-eks.yaml</span>
+<span class="c-comment"># Removes everything skaffold-eks.yaml applied — Deployments, Services, Ingress</span></pre>
+    </div>
+  </section>
+
+
+  <footer>
+    <span>Sheryians Coding School · EKS Deployment Notes</span>
+    <span>Region: ap-southeast-1 · CloudFront + S3 + EKS · cryboy.in</span>
+  </footer>
+
+</main>
+</div>
+
+<script>
+// ── Active nav link on scroll ──
+const sections = document.querySelectorAll('section[id]');
+const navLinks  = document.querySelectorAll('nav a');
+const observer  = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => observer.observe(s));
+
+// ── Copy button ──
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1800);
+  });
+}
+</script>
+
+
+</body></html>

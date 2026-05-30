@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kubernetes Local Setup — Complete Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:ital,wght@0,300;0,600;0,700;0,900;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --ink:       #0E0F14;
+  --paper:     #F5F2EB;
+  --paper2:    #EDE9DF;
+  --paper3:    #E4DFD3;
+  --rule:      #D4CEBC;
+  --accent:    #C84B1F;
+  --accent2:   #1A6B4A;
+  --accent3:   #1B4587;
+  --gold:      #B8860B;
+  --muted:     #6B6455;
+  --code-bg:   #1A1C24;
+  --code-text: #E2DCCC;
+  --flag-c:    #5BA4CF;
+  --val-c:     #F4A261;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ── Layout ── */
+.layout { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+nav {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--ink);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 32px 0 40px;
+}
+.nav-brand {
+  padding: 0 24px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 20px;
+}
+.nav-brand .logo {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.nav-brand .logo span { color: var(--accent); }
+.nav-brand .sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 4px;
+  letter-spacing: 0.06em;
+}
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 24px;
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 400;
+  transition: all 0.2s;
+  border-left: 2px solid transparent;
+}
+nav a:hover { color: #fff; background: rgba(255,255,255,0.04); }
+nav a.active { color: #fff; border-left-color: var(--accent); background: rgba(200,75,31,0.08); }
+.nav-group-label {
+  padding: 16px 24px 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.nav-num {
+  width: 18px; height: 18px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; color: rgba(255,255,255,0.4);
+  flex-shrink: 0;
+}
+nav a:hover .nav-num, nav a.active .nav-num {
+  background: var(--accent); color: #fff;
+}
+
+/* ── Main ── */
+main {
+  flex: 1;
+  max-width: calc(99% - 260px);
+  padding: 56px 56px 80px;
+}
+
+/* ── Hero ── */
+.hero {
+  margin-bottom: 64px;
+  padding-bottom: 40px;
+  border-bottom: 2px solid var(--rule);
+}
+.hero-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(36px, 5vw, 58px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero-desc { font-size: 16px; color: var(--muted); max-width: 560px; line-height: 1.65; }
+.hero-meta { display: flex; gap: 24px; margin-top: 24px; flex-wrap: wrap; }
+.hero-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  color: var(--muted);
+}
+
+/* ── Section ── */
+.section { margin-bottom: 72px; animation: fadeUp 0.4s ease both; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-header {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 28px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.section-num-big {
+  font-family: 'Fraunces', serif;
+  font-size: 48px; font-weight: 900;
+  color: var(--rule); line-height: 1;
+  flex-shrink: 0; margin-top: -4px; user-select: none;
+}
+.section-title-block { flex: 1; }
+.section-title { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; line-height: 1.2; color: var(--ink); }
+.section-subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+/* ── Concept box ── */
+.concept {
+  background: var(--paper2);
+  border-left: 3px solid var(--accent3);
+  border-radius: 0 8px 8px 0;
+  padding: 18px 20px; margin-bottom: 24px;
+}
+.concept-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; color: var(--accent3);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;
+}
+.concept p { font-size: 14px; color: var(--ink); line-height: 1.65; }
+.concept strong { color: var(--ink); font-weight: 600; }
+
+/* ── Note ── */
+.note {
+  background: #FEF9EC; border: 1px solid #EDD97A;
+  border-radius: 8px; padding: 14px 18px; margin: 16px 0;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.note-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.note p { font-size: 13px; color: #5C4A00; line-height: 1.6; }
+.note strong { color: #3D3000; }
+
+/* ── Warning ── */
+.warn {
+  background: #FEF2F2; border: 1px solid #FCA5A5;
+  border-radius: 8px; padding: 14px 18px; margin: 16px 0;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.warn p { font-size: 13px; color: #7F1D1D; line-height: 1.6; }
+.warn strong { color: #7F1D1D; font-weight: 700; }
+
+/* ── Code block ── */
+.code-wrap {
+  background: var(--code-bg); border-radius: 10px;
+  overflow: hidden; margin: 16px 0;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.code-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: rgba(255,255,255,0.3);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.copy-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: rgba(255,255,255,0.3);
+  background: none; border: none; cursor: pointer;
+  padding: 2px 8px; border-radius: 3px; transition: all 0.2s;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+pre {
+  padding: 20px; overflow-x: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; line-height: 1.7; color: var(--code-text);
+}
+.c-cmd   { color: #87CEEB; font-weight: 600; }
+.c-flag  { color: #5BA4CF; }
+.c-val   { color: #F4A261; }
+.c-str   { color: #98C379; }
+.c-comment { color: rgba(255,255,255,0.28); font-style: italic; }
+.c-key   { color: #C678DD; }
+.c-pipe  { color: #E5C07B; }
+
+/* ── Flag table ── */
+.flag-table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+.flag-table th {
+  text-align: left; padding: 8px 12px;
+  background: var(--paper3);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--rule);
+}
+.flag-table td { padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.flag-table tr:last-child td { border-bottom: none; }
+.flag-table tr:hover td { background: var(--paper2); }
+.f-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--flag-c); font-weight: 600; white-space: nowrap; }
+.f-val  { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--val-c); }
+.f-desc { color: var(--ink); font-size: 13px; line-height: 1.5; }
+.f-why  { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* ── Compare table ── */
+.compare { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+.compare th {
+  padding: 10px 16px; text-align: left;
+  background: var(--ink); color: #fff;
+  font-weight: 600; font-size: 13px;
+}
+.compare th:first-child { border-radius: 8px 0 0 0; }
+.compare th:last-child  { border-radius: 0 8px 0 0; }
+.compare td { padding: 11px 16px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.compare tr:last-child td { border-bottom: none; }
+.compare tr:hover td { background: var(--paper2); }
+.compare .row-label { font-weight: 600; color: var(--ink); font-size: 13px; }
+.compare .col-a { color: var(--muted); }
+.compare .col-b { color: var(--accent2); font-weight: 500; }
+
+/* ── Flow ── */
+.flow { display: flex; flex-direction: column; margin: 20px 0; }
+.flow-step { display: flex; align-items: flex-start; gap: 14px; }
+.flow-line { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.flow-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
+.flow-connector { width: 2px; flex: 1; min-height: 20px; background: var(--rule); }
+.flow-content { padding-bottom: 18px; flex: 1; }
+.flow-title { font-weight: 600; font-size: 14px; color: var(--ink); }
+.flow-detail { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+/* ── Scale diagram ── */
+.scale-diagram {
+  background: var(--paper2); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 20px; margin: 16px 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; color: var(--muted); line-height: 2;
+}
+.scale-diagram .hi    { color: var(--ink); font-weight: 600; }
+.scale-diagram .red   { color: var(--accent); }
+.scale-diagram .green { color: var(--accent2); }
+
+/* ── Step label ── */
+.step-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent); color: #fff;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  padding: 3px 10px; border-radius: 4px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.step-label.green { background: var(--accent2); }
+.step-label.blue  { background: var(--accent3); }
+.step-label.gold  { background: var(--gold); }
+
+/* ── Typography ── */
+h3 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: var(--ink); margin: 28px 0 12px; }
+h4 { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin: 20px 0 8px; }
+p  { margin-bottom: 12px; font-size: 14.5px; color: #2A2720; line-height: 1.7; }
+code {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  background: var(--paper3); border: 1px solid var(--rule);
+  color: var(--accent); padding: 1px 6px; border-radius: 4px;
+}
+
+hr.divider { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+
+/* ── Arch diagram ── */
+.arch {
+  background: var(--paper2); border: 1px solid var(--rule);
+  border-radius: 12px; padding: 28px; margin: 20px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+}
+.arch-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; justify-content: center;
+}
+.arch-box {
+  background: var(--paper); border: 1.5px solid var(--rule);
+  border-radius: 8px; padding: 10px 20px;
+  text-align: center; min-width: 140px;
+}
+.arch-box.accent  { border-color: var(--accent);  background: rgba(200,75,31,0.06); }
+.arch-box.blue    { border-color: var(--accent3); background: rgba(27,69,135,0.06); }
+.arch-box.green   { border-color: var(--accent2); background: rgba(26,107,74,0.06); }
+.arch-box.gold    { border-color: var(--gold);    background: rgba(184,134,11,0.06); }
+.arch-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: var(--ink); }
+.arch-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+.arch-arrow { color: var(--muted); font-size: 18px; line-height: 1; }
+.arch-arrow.down { transform: rotate(90deg); display: block; margin: 6px auto; }
+
+/* ── Label pill ── */
+.pill {
+  display: inline-block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; font-weight: 600;
+  padding: 2px 8px; border-radius: 3px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.pill-red   { background: rgba(200,75,31,0.1);  color: var(--accent);  border: 1px solid rgba(200,75,31,0.2);  }
+.pill-blue  { background: rgba(27,69,135,0.1);  color: var(--accent3); border: 1px solid rgba(27,69,135,0.2);  }
+.pill-green { background: rgba(26,107,74,0.1);  color: var(--accent2); border: 1px solid rgba(26,107,74,0.2);  }
+.pill-gold  { background: rgba(184,134,11,0.1); color: var(--gold);    border: 1px solid rgba(184,134,11,0.2); }
+
+/* ── Footer ── */
+footer {
+  margin-top: 80px; padding-top: 24px;
+  border-top: 2px solid var(--rule);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+footer span { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+
+@media (max-width: 768px) {
+  nav { display: none; }
+  main { padding: 32px 24px 60px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ════════════════ SIDEBAR ════════════════ -->
+<nav>
+  <div class="nav-brand">
+    <div class="logo">K8s<span>.</span>Local</div>
+    <div class="sub">Sheryians Coding School</div>
+  </div>
+
+  <div class="nav-group-label">Overview</div>
+  <a href="#what-is-k8s"><span class="nav-num">0</span> What is Kubernetes</a>
+  <a href="#architecture"><span class="nav-num">1</span> Architecture</a>
+
+  <div class="nav-group-label">Core Components</div>
+  <a href="#pod"><span class="nav-num">2</span> Pod</a>
+  <a href="#deployment"><span class="nav-num">3</span> Deployment</a>
+  <a href="#replicaset"><span class="nav-num">4</span> ReplicaSet</a>
+  <a href="#service"><span class="nav-num">5</span> Service</a>
+  <a href="#ingress"><span class="nav-num">6</span> Ingress</a>
+  <a href="#ingress-controller"><span class="nav-num">7</span> Ingress Controller</a>
+
+  <div class="nav-group-label">Setup</div>
+  <a href="#enable-k8s"><span class="nav-num">8</span> Enable Kubernetes</a>
+  <a href="#yaml-files"><span class="nav-num">9</span> Writing YAML Files</a>
+  <a href="#labels"><span class="nav-num">10</span> Labels &amp; Selectors</a>
+
+  <div class="nav-group-label">Run &amp; Debug</div>
+  <a href="#deploy"><span class="nav-num">11</span> Deploy Your App</a>
+  <a href="#debug"><span class="nav-num">12</span> Debug Commands</a>
+  <a href="#hpa"><span class="nav-num">13</span> Autoscaling (HPA)</a>
+  <a href="#secrets"><span class="nav-num">14</span> Secrets (Local)</a>
+</nav>
+
+<!-- ════════════════ MAIN ════════════════ -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Local Setup · Docker Desktop</div>
+    <h1>Kubernetes on Your<br/><em>Local Machine</em></h1>
+    <p class="hero-desc">A complete guide to understanding and running Kubernetes locally using Docker Desktop. Covers every core component with examples from a real MERN stack project.</p>
+    <div class="hero-meta">
+      <span class="hero-tag">Docker Desktop</span>
+      <span class="hero-tag">MERN Stack</span>
+      <span class="hero-tag">nginx Ingress</span>
+      <span class="hero-tag">Node.js · Express</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       0. WHAT IS KUBERNETES
+  ═══════════════════════════════════ -->
+  <section class="section" id="what-is-k8s">
+    <div class="section-header">
+      <div class="section-num-big">00</div>
+      <div class="section-title-block">
+        <div class="section-title">What is Kubernetes?</div>
+        <div class="section-subtitle">The problem it solves and why you need it</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Core Concept</div>
+      <p><strong>Kubernetes (K8s)</strong> is a container orchestration system. It manages how your Docker containers run — making sure the right number are running, restarting them when they crash, routing traffic between them, and scaling them up when load increases. You describe what you want in YAML files and Kubernetes makes it happen.</p>
+    </div>
+
+    <h3>Without vs With Kubernetes</h3>
+    <table class="compare">
+      <thead><tr><th>Situation</th><th>Without Kubernetes</th><th>With Kubernetes</th></tr></thead>
+      <tbody>
+        <tr><td class="row-label">Container crashes</td><td class="col-a">App goes down, manual restart needed</td><td class="col-b">Kubernetes restarts it automatically</td></tr>
+        <tr><td class="row-label">Traffic spike</td><td class="col-a">App slows down or crashes</td><td class="col-b">HPA adds more containers automatically</td></tr>
+        <tr><td class="row-label">Multiple services</td><td class="col-a">Manual ports, complex networking</td><td class="col-b">Internal DNS — services talk by name</td></tr>
+        <tr><td class="row-label">Deploy new version</td><td class="col-a">Downtime during update</td><td class="col-b">Rolling update — zero downtime</td></tr>
+        <tr><td class="row-label">Multiple replicas</td><td class="col-a">Manage each container manually</td><td class="col-b">Set replicas: 3 and Kubernetes handles the rest</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Key Terms at a glance</h3>
+    <table class="flag-table">
+      <thead><tr><th>Term</th><th>Simple meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">Pod</span></td><td class="f-desc">Smallest unit. One or more containers running together.</td></tr>
+        <tr><td><span class="f-name">Deployment</span></td><td class="f-desc">Manages pods — keeps them running, handles updates and rollbacks.</td></tr>
+        <tr><td><span class="f-name">Service</span></td><td class="f-desc">Stable network endpoint that finds pods using labels and routes traffic to them.</td></tr>
+        <tr><td><span class="f-name">Ingress</span></td><td class="f-desc">HTTP routing rules — which domain/path goes to which service.</td></tr>
+        <tr><td><span class="f-name">Ingress Controller</span></td><td class="f-desc">The actual pod (nginx) that reads Ingress rules and routes real traffic.</td></tr>
+        <tr><td><span class="f-name">Namespace</span></td><td class="f-desc">Virtual cluster inside a cluster. Used to separate environments.</td></tr>
+        <tr><td><span class="f-name">ConfigMap</span></td><td class="f-desc">Store non-secret config (env variables) separately from your image.</td></tr>
+        <tr><td><span class="f-name">Secret</span></td><td class="f-desc">Store sensitive config (passwords, tokens) encoded in the cluster.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       1. ARCHITECTURE
+  ═══════════════════════════════════ -->
+  <section class="section" id="architecture">
+    <div class="section-header">
+      <div class="section-num-big">01</div>
+      <div class="section-title-block">
+        <div class="section-title">Architecture</div>
+        <div class="section-subtitle">How all components fit together</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>A Kubernetes cluster has two parts: the <strong>Control Plane</strong> (the brain — decides what runs where) and <strong>Worker Nodes</strong> (the muscle — where your pods actually run). On Docker Desktop both live on your local machine.</p>
+    </div>
+
+    <h3>Full traffic flow</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Browser / Client</div>
+          <div class="flow-detail">Makes HTTP request to express.local or localhost</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Ingress Controller (nginx pod)</div>
+          <div class="flow-detail">Receives traffic. Reads Ingress rules to decide where to send it.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Ingress Resource (your ingress.yaml rules)</div>
+          <div class="flow-detail">Defines which host/path maps to which Service</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Service (ClusterIP)</div>
+          <div class="flow-detail">Finds pods using label selector. Load balances across all matching pods.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line"><div class="flow-dot" style="background:var(--accent2)"></div></div>
+        <div class="flow-content">
+          <div class="flow-title">Pod (your Express container)</div>
+          <div class="flow-detail">Handles the request and sends back a response</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Cluster Architecture Diagram</h3>
+    <div style="background:var(--paper2);border:1px solid var(--rule);border-radius:12px;padding:24px 16px;margin:16px 0;overflow-x:auto;">
+      <svg viewBox="0 0 860 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:860px;display:block;margin:0 auto;font-family:'IBM Plex Mono',monospace;">
+        <!-- Outer Cluster border -->
+        <rect x="10" y="10" width="840" height="500" rx="16" fill="none" stroke="#D4CEBC" stroke-width="2" stroke-dasharray="6,4"/>
+        <text x="30" y="32" font-size="11" fill="#6B6455" font-weight="600" letter-spacing="0.1em">KUBERNETES CLUSTER (Docker Desktop)</text>
+
+        <!-- ── MASTER NODE ── -->
+        <rect x="30" y="44" width="340" height="310" rx="12" fill="rgba(27,69,135,0.05)" stroke="#1B4587" stroke-width="1.5"/>
+        <rect x="30" y="44" width="340" height="28" rx="12" fill="#1B4587"/>
+        <rect x="30" y="58" width="340" height="14" fill="#1B4587"/>
+        <text x="200" y="63" text-anchor="middle" font-size="11" fill="#fff" font-weight="700" letter-spacing="0.08em">MASTER NODE  ·  Control Plane</text>
+
+        <!-- API Server -->
+        <rect x="50" y="86" width="140" height="52" rx="8" fill="rgba(27,69,135,0.1)" stroke="#1B4587" stroke-width="1.2"/>
+        <text x="120" y="108" text-anchor="middle" font-size="10" fill="#1B4587" font-weight="700">API Server</text>
+        <text x="120" y="124" text-anchor="middle" font-size="9" fill="#6B6455">Entry point for all</text>
+        <text x="120" y="135" text-anchor="middle" font-size="9" fill="#6B6455">kubectl commands</text>
+
+        <!-- Scheduler -->
+        <rect x="210" y="86" width="140" height="52" rx="8" fill="rgba(27,69,135,0.1)" stroke="#1B4587" stroke-width="1.2"/>
+        <text x="280" y="108" text-anchor="middle" font-size="10" fill="#1B4587" font-weight="700">Scheduler</text>
+        <text x="280" y="124" text-anchor="middle" font-size="9" fill="#6B6455">Assigns pods to</text>
+        <text x="280" y="135" text-anchor="middle" font-size="9" fill="#6B6455">worker nodes</text>
+
+        <!-- Controller Manager -->
+        <rect x="50" y="154" width="140" height="52" rx="8" fill="rgba(27,69,135,0.1)" stroke="#1B4587" stroke-width="1.2"/>
+        <text x="120" y="176" text-anchor="middle" font-size="10" fill="#1B4587" font-weight="700">Controller Mgr</text>
+        <text x="120" y="192" text-anchor="middle" font-size="9" fill="#6B6455">Runs ReplicaSet,</text>
+        <text x="120" y="203" text-anchor="middle" font-size="9" fill="#6B6455">Deployment loops</text>
+
+        <!-- etcd -->
+        <rect x="210" y="154" width="140" height="52" rx="8" fill="rgba(184,134,11,0.08)" stroke="#B8860B" stroke-width="1.2"/>
+        <text x="280" y="176" text-anchor="middle" font-size="10" fill="#B8860B" font-weight="700">etcd</text>
+        <text x="280" y="192" text-anchor="middle" font-size="9" fill="#6B6455">Cluster state store</text>
+        <text x="280" y="203" text-anchor="middle" font-size="9" fill="#6B6455">(key-value DB)</text>
+
+        <!-- Pods running on master note -->
+        <rect x="50" y="222" width="300" height="48" rx="6" fill="rgba(200,75,31,0.07)" stroke="#C84B1F" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="200" y="241" text-anchor="middle" font-size="9" fill="#C84B1F" font-weight="700">⚙ System Pods  (running on Master)</text>
+        <text x="200" y="256" text-anchor="middle" font-size="9" fill="#6B6455">kube-dns  ·  metrics-server  ·  ingress-nginx</text>
+        <text x="200" y="268" text-anchor="middle" font-size="9" fill="#6B6455">coredns  ·  kube-proxy  ·  etcd pod</text>
+
+        <!-- Metrics Server callout -->
+        <rect x="50" y="282" width="300" height="32" rx="6" fill="rgba(26,107,74,0.07)" stroke="#1A6B4A" stroke-width="1"/>
+        <text x="200" y="298" text-anchor="middle" font-size="9" fill="#1A6B4A" font-weight="700">📊 metrics-server pod → feeds CPU data to HPA</text>
+        <text x="200" y="310" text-anchor="middle" font-size="9" fill="#6B6455">Must be installed for kubectl top / HPA to work</text>
+
+        <!-- ── WORKER NODE ── -->
+        <rect x="400" y="44" width="440" height="310" rx="12" fill="rgba(26,107,74,0.04)" stroke="#1A6B4A" stroke-width="1.5"/>
+        <rect x="400" y="44" width="440" height="28" rx="12" fill="#1A6B4A"/>
+        <rect x="400" y="58" width="440" height="14" fill="#1A6B4A"/>
+        <text x="620" y="63" text-anchor="middle" font-size="11" fill="#fff" font-weight="700" letter-spacing="0.08em">WORKER NODE  ·  Where Pods Run</text>
+
+        <!-- kubelet -->
+        <rect x="416" y="86" width="120" height="52" rx="8" fill="rgba(26,107,74,0.1)" stroke="#1A6B4A" stroke-width="1.2"/>
+        <text x="476" y="108" text-anchor="middle" font-size="10" fill="#1A6B4A" font-weight="700">kubelet</text>
+        <text x="476" y="124" text-anchor="middle" font-size="9" fill="#6B6455">Runs pods on</text>
+        <text x="476" y="135" text-anchor="middle" font-size="9" fill="#6B6455">this node</text>
+
+        <!-- kube-proxy -->
+        <rect x="554" y="86" width="120" height="52" rx="8" fill="rgba(26,107,74,0.1)" stroke="#1A6B4A" stroke-width="1.2"/>
+        <text x="614" y="108" text-anchor="middle" font-size="10" fill="#1A6B4A" font-weight="700">kube-proxy</text>
+        <text x="614" y="124" text-anchor="middle" font-size="9" fill="#6B6455">Handles networking</text>
+        <text x="614" y="135" text-anchor="middle" font-size="9" fill="#6B6455">rules for services</text>
+
+        <!-- Container Runtime -->
+        <rect x="692" y="86" width="130" height="52" rx="8" fill="rgba(26,107,74,0.1)" stroke="#1A6B4A" stroke-width="1.2"/>
+        <text x="757" y="108" text-anchor="middle" font-size="10" fill="#1A6B4A" font-weight="700">Container</text>
+        <text x="757" y="120" text-anchor="middle" font-size="10" fill="#1A6B4A" font-weight="700">Runtime</text>
+        <text x="757" y="133" text-anchor="middle" font-size="9" fill="#6B6455">Docker / containerd</text>
+
+        <!-- Deployment box -->
+        <rect x="416" y="154" width="400" height="180" rx="8" fill="rgba(200,75,31,0.04)" stroke="#C84B1F" stroke-width="1.2" stroke-dasharray="5,3"/>
+        <text x="490" y="172" font-size="9" fill="#C84B1F" font-weight="700" letter-spacing="0.08em">DEPLOYMENT  (manages ReplicaSet)</text>
+
+        <!-- ReplicaSet box -->
+        <rect x="428" y="178" width="376" height="144" rx="6" fill="rgba(200,75,31,0.04)" stroke="#C84B1F" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="502" y="194" font-size="9" fill="#C84B1F" font-weight="600" letter-spacing="0.06em">REPLICASET  (ensures desired pod count)</text>
+
+        <!-- Pod 1 -->
+        <rect x="440" y="200" width="108" height="108" rx="8" fill="rgba(27,69,135,0.08)" stroke="#1B4587" stroke-width="1.2"/>
+        <text x="494" y="220" text-anchor="middle" font-size="9" fill="#1B4587" font-weight="700">POD 1</text>
+        <rect x="452" y="226" width="84" height="22" rx="4" fill="rgba(27,69,135,0.12)"/>
+        <text x="494" y="241" text-anchor="middle" font-size="8.5" fill="#1B4587">express 🟢</text>
+        <rect x="452" y="252" width="84" height="18" rx="3" fill="rgba(26,107,74,0.1)"/>
+        <text x="494" y="265" text-anchor="middle" font-size="8" fill="#1A6B4A">ClusterIP</text>
+        <rect x="452" y="274" width="84" height="14" rx="3" fill="rgba(184,134,11,0.08)"/>
+        <text x="494" y="284" text-anchor="middle" font-size="8" fill="#B8860B">Secret ⚿</text>
+        <text x="494" y="300" text-anchor="middle" font-size="8" fill="#6B6455">app: express</text>
+
+        <!-- Pod 2 -->
+        <rect x="562" y="200" width="108" height="108" rx="8" fill="rgba(27,69,135,0.08)" stroke="#1B4587" stroke-width="1.2"/>
+        <text x="616" y="220" text-anchor="middle" font-size="9" fill="#1B4587" font-weight="700">POD 2</text>
+        <rect x="574" y="226" width="84" height="22" rx="4" fill="rgba(27,69,135,0.12)"/>
+        <text x="616" y="241" text-anchor="middle" font-size="8.5" fill="#1B4587">express 🟢</text>
+        <rect x="574" y="252" width="84" height="18" rx="3" fill="rgba(26,107,74,0.1)"/>
+        <text x="616" y="265" text-anchor="middle" font-size="8" fill="#1A6B4A">ClusterIP</text>
+        <rect x="574" y="274" width="84" height="14" rx="3" fill="rgba(184,134,11,0.08)"/>
+        <text x="616" y="284" text-anchor="middle" font-size="8" fill="#B8860B">Secret ⚿</text>
+        <text x="616" y="300" text-anchor="middle" font-size="8" fill="#6B6455">app: express</text>
+
+        <!-- Pod 3 (HPA scaled) -->
+        <rect x="684" y="200" width="108" height="108" rx="8" fill="rgba(26,107,74,0.08)" stroke="#1A6B4A" stroke-width="1.2" stroke-dasharray="4,2"/>
+        <text x="738" y="220" text-anchor="middle" font-size="9" fill="#1A6B4A" font-weight="700">POD 3</text>
+        <text x="738" y="234" text-anchor="middle" font-size="8" fill="#1A6B4A">(HPA scaled)</text>
+        <rect x="696" y="240" width="84" height="22" rx="4" fill="rgba(26,107,74,0.12)"/>
+        <text x="738" y="255" text-anchor="middle" font-size="8.5" fill="#1A6B4A">express 🟡</text>
+        <rect x="696" y="266" width="84" height="14" rx="3" fill="rgba(184,134,11,0.08)"/>
+        <text x="738" y="276" text-anchor="middle" font-size="8" fill="#B8860B">Secret ⚿</text>
+        <text x="738" y="300" text-anchor="middle" font-size="8" fill="#6B6455">app: express</text>
+
+        <!-- ── BOTTOM ROW: Service, Ingress, HPA ── -->
+        <rect x="30" y="374" width="200" height="60" rx="8" fill="rgba(26,107,74,0.07)" stroke="#1A6B4A" stroke-width="1.3"/>
+        <text x="130" y="396" text-anchor="middle" font-size="10" fill="#1A6B4A" font-weight="700">Service (ClusterIP)</text>
+        <text x="130" y="412" text-anchor="middle" font-size="9" fill="#6B6455">Finds pods by label</text>
+        <text x="130" y="424" text-anchor="middle" font-size="9" fill="#6B6455">app: express</text>
+
+        <rect x="250" y="374" width="160" height="60" rx="8" fill="rgba(200,75,31,0.07)" stroke="#C84B1F" stroke-width="1.3"/>
+        <text x="330" y="396" text-anchor="middle" font-size="10" fill="#C84B1F" font-weight="700">Ingress</text>
+        <text x="330" y="412" text-anchor="middle" font-size="9" fill="#6B6455">Routes external</text>
+        <text x="330" y="424" text-anchor="middle" font-size="9" fill="#6B6455">HTTP traffic</text>
+
+        <rect x="430" y="374" width="160" height="60" rx="8" fill="rgba(184,134,11,0.07)" stroke="#B8860B" stroke-width="1.3"/>
+        <text x="510" y="396" text-anchor="middle" font-size="10" fill="#B8860B" font-weight="700">HPA</text>
+        <text x="510" y="412" text-anchor="middle" font-size="9" fill="#6B6455">Scales pods via</text>
+        <text x="510" y="424" text-anchor="middle" font-size="9" fill="#6B6455">metrics-server CPU</text>
+
+        <rect x="610" y="374" width="220" height="60" rx="8" fill="rgba(27,69,135,0.06)" stroke="#1B4587" stroke-width="1.3"/>
+        <text x="720" y="396" text-anchor="middle" font-size="10" fill="#1B4587" font-weight="700">Secrets / ConfigMap</text>
+        <text x="720" y="412" text-anchor="middle" font-size="9" fill="#6B6455">Env vars injected into</text>
+        <text x="720" y="424" text-anchor="middle" font-size="9" fill="#6B6455">pods at runtime</text>
+
+        <!-- ── EXTERNAL TRAFFIC ── -->
+        <rect x="30" y="454" width="810" height="44" rx="8" fill="rgba(14,15,20,0.04)" stroke="#D4CEBC" stroke-width="1.2"/>
+        <text x="435" y="473" text-anchor="middle" font-size="10" fill="#6B6455" font-weight="600">🌐  Browser / curl  →  localhost  →  Ingress Controller (nginx pod on Master)  →  Service  →  Pod</text>
+        <text x="435" y="490" text-anchor="middle" font-size="9" fill="#6B6455">kubectl  →  API Server  →  Scheduler / Controller  →  kubelet on Worker  →  Pod created</text>
+
+        <!-- Arrow: master ↔ worker -->
+        <line x1="370" y1="200" x2="400" y2="200" stroke="#D4CEBC" stroke-width="2" marker-end="url(#arr)"/>
+        <defs>
+          <marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <polygon points="0 0, 7 3.5, 0 7" fill="#D4CEBC"/>
+          </marker>
+        </defs>
+
+        <!-- Arrow: service -> pods -->
+        <line x1="130" y1="374" x2="494" y2="308" stroke="#1A6B4A" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arr2)"/>
+        <defs>
+          <marker id="arr2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <polygon points="0 0, 6 3, 0 6" fill="#1A6B4A"/>
+          </marker>
+        </defs>
+
+        <!-- Arrow: HPA -> replicaset -->
+        <line x1="510" y1="374" x2="616" y2="334" stroke="#B8860B" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arr3)"/>
+        <defs>
+          <marker id="arr3" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <polygon points="0 0, 6 3, 0 6" fill="#B8860B"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+
+    <h3>Project file structure</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Project Layout</span></div>
+      <pre><span class="c-str">your-project/</span>
+├── <span class="c-str">Backend/</span>
+│   ├── <span class="c-val">server.js</span>
+│   ├── <span class="c-val">package.json</span>
+│   └── <span class="c-val">dockerfile</span>
+└── <span class="c-str">k8s/</span>               <span class="c-comment"># all Kubernetes YAML files here</span>
+    ├── <span class="c-val">deployment.yaml</span>    <span class="c-comment"># how to run the app</span>
+    ├── <span class="c-val">service.yaml</span>       <span class="c-comment"># how to reach the app</span>
+    └── <span class="c-val">ingress.yaml</span>       <span class="c-comment"># how external traffic enters</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       2. POD
+  ═══════════════════════════════════ -->
+  <section class="section" id="pod">
+    <div class="section-header">
+      <div class="section-num-big">02</div>
+      <div class="section-title-block">
+        <div class="section-title">Pod</div>
+        <div class="section-subtitle">The smallest deployable unit in Kubernetes</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>A <strong>Pod</strong> is a wrapper around one or more containers. All containers in a pod share the same network (same IP address) and storage. In practice, most pods contain a single container — your app. You rarely create pods directly — a Deployment creates and manages them for you.</p>
+    </div>
+
+    <h3>What a pod contains</h3>
+    <table class="flag-table">
+      <thead><tr><th>What</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">Container(s)</span></td><td class="f-desc">One or more Docker containers. They share the same localhost inside the pod.</td></tr>
+        <tr><td><span class="f-name">IP Address</span></td><td class="f-desc">Each pod gets its own IP inside the cluster. This IP changes every time a pod restarts — which is why you use a Service instead of the pod IP directly.</td></tr>
+        <tr><td><span class="f-name">Labels</span></td><td class="f-desc">Key-value tags like app: express. Services and Deployments use these to find the pod.</td></tr>
+        <tr><td><span class="f-name">Resources</span></td><td class="f-desc">CPU and memory limits and requests defined in the pod spec.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Pod lifecycle</h3>
+    <div class="scale-diagram">
+      <span class="hi">Pending</span>  →  pod is scheduled, image is being pulled<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="hi">Running</span>  →  container started successfully<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="green">Ready</span>    →  readiness probe passed, pod receives traffic ✅<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="red">CrashLoopBackOff</span>  →  container keeps crashing, Kubernetes retries<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="red">ImagePullBackOff</span>  →  cannot pull the Docker image
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>You <strong>never create pods directly</strong> in production. Always use a Deployment. If a pod is created directly and crashes, nothing restarts it. A Deployment automatically replaces crashed pods.</p>
+    </div>
+
+    <h3>Check pod status</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get pods</span>                       <span class="c-comment"># list all pods</span>
+<span class="c-cmd">kubectl describe pod</span> <span class="c-val">&lt;pod-name&gt;</span>         <span class="c-comment"># full details + events</span>
+<span class="c-cmd">kubectl logs</span> <span class="c-val">&lt;pod-name&gt;</span>                <span class="c-comment"># app console output</span>
+<span class="c-cmd">kubectl exec -it</span> <span class="c-val">&lt;pod-name&gt;</span> <span class="c-pipe">--</span> <span class="c-val">sh</span>     <span class="c-comment"># shell inside pod</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       3. DEPLOYMENT
+  ═══════════════════════════════════ -->
+  <section class="section" id="deployment">
+    <div class="section-header">
+      <div class="section-num-big">03</div>
+      <div class="section-title-block">
+        <div class="section-title">Deployment</div>
+        <div class="section-subtitle">Manages pods — runs, scales, updates and rolls back</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>A <strong>Deployment</strong> is a manager for your pods. You tell it what image to run, how many replicas you want, and what resources each pod needs. It ensures that exact state is always maintained — if a pod crashes, Deployment creates a new one. If you update the image, it does a rolling update with zero downtime.</p>
+    </div>
+
+    <h3>What Deployment is responsible for</h3>
+    <table class="flag-table">
+      <thead><tr><th>Responsibility</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">Replica management</span></td><td class="f-desc">Always keeps the exact number of pods running. If one crashes, a new one is created immediately.</td></tr>
+        <tr><td><span class="f-name">Rolling update</span></td><td class="f-desc">When you push a new image, Kubernetes replaces pods one by one. Old pods serve traffic until new ones are ready — zero downtime.</td></tr>
+        <tr><td><span class="f-name">Rollback</span></td><td class="f-desc">If a new version has a bug, one command goes back to the previous working version.</td></tr>
+        <tr><td><span class="f-name">Scaling</span></td><td class="f-desc">Change replica count manually or let HPA do it automatically based on CPU.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Full deployment.yaml with explanation</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">deployment.yaml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">apps/v1</span>          <span class="c-comment"># Deployment lives in apps group</span>
+<span class="c-key">kind</span>: <span class="c-val">Deployment</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">express-deployment</span>
+<span class="c-key">spec</span>:
+  <span class="c-key">replicas</span>: <span class="c-val">2</span>              <span class="c-comment"># always keep 2 pods running</span>
+  <span class="c-key">selector</span>:
+    <span class="c-key">matchLabels</span>:
+      <span class="c-key">app</span>: <span class="c-val">express</span>          <span class="c-comment"># (1) manage pods that have this label</span>
+  <span class="c-key">template</span>:              <span class="c-comment"># blueprint for each pod</span>
+    <span class="c-key">metadata</span>:
+      <span class="c-key">labels</span>:
+        <span class="c-key">app</span>: <span class="c-val">express</span>        <span class="c-comment"># (2) stick this label on every pod created</span>
+        <span class="c-key">owner</span>: <span class="c-val">ankur</span>       <span class="c-comment"># extra label — deployment ignores it</span>
+    <span class="c-key">spec</span>:
+      <span class="c-key">containers</span>:
+        - <span class="c-key">name</span>: <span class="c-val">express</span>
+          <span class="c-key">image</span>: <span class="c-val">express-k8s:latest</span>
+          <span class="c-key">imagePullPolicy</span>: <span class="c-val">IfNotPresent</span>  <span class="c-comment"># use local image if it exists</span>
+          <span class="c-key">ports</span>:
+            - <span class="c-key">containerPort</span>: <span class="c-val">3000</span>         <span class="c-comment"># port your app listens on</span>
+          <span class="c-key">resources</span>:
+            <span class="c-key">limits</span>:
+              <span class="c-key">memory</span>: <span class="c-val">"128Mi"</span>            <span class="c-comment"># max memory pod can use</span>
+              <span class="c-key">cpu</span>: <span class="c-val">"500m"</span>               <span class="c-comment"># max CPU (500m = 0.5 core)</span>
+            <span class="c-key">requests</span>:
+              <span class="c-key">memory</span>: <span class="c-val">"64Mi"</span>             <span class="c-comment"># memory reserved for this pod</span>
+              <span class="c-key">cpu</span>: <span class="c-val">"250m"</span>               <span class="c-comment"># CPU reserved (required for HPA)</span></pre>
+    </div>
+
+    <h3>Key fields explained</h3>
+    <table class="flag-table">
+      <thead><tr><th>Field</th><th>Value</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">apiVersion</span></td><td><span class="f-val">apps/v1</span></td><td class="f-desc">Deployment belongs to the apps API group. Not the core group (v1) — that's for Pods and Services.</td></tr>
+        <tr><td><span class="f-name">replicas</span></td><td><span class="f-val">2</span></td><td class="f-desc">Always maintain 2 running pods. If one crashes, a new one is created immediately.</td></tr>
+        <tr><td><span class="f-name">selector.matchLabels</span></td><td><span class="f-val">app: express</span></td><td class="f-desc">The Deployment manages pods that have ALL these labels. Must match template.metadata.labels.</td></tr>
+        <tr><td><span class="f-name">template.metadata.labels</span></td><td><span class="f-val">app: express</span></td><td class="f-desc">Labels stamped on every pod this Deployment creates. Service uses these to find pods.</td></tr>
+        <tr><td><span class="f-name">imagePullPolicy</span></td><td><span class="f-val">IfNotPresent</span></td><td class="f-desc">Use local image if available. On EKS change this to Always so it pulls from ECR on every restart.</td></tr>
+        <tr><td><span class="f-name">resources.requests</span></td><td><span class="f-val">cpu: 250m</span></td><td class="f-desc">CPU/memory reserved for this pod. HPA requires requests to be set — it uses this to calculate utilization %.</td></tr>
+        <tr><td><span class="f-name">resources.limits</span></td><td><span class="f-val">cpu: 500m</span></td><td class="f-desc">Maximum CPU/memory the pod can use. Prevents one pod from starving others.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>CPU units explained</h3>
+    <table class="flag-table">
+      <thead><tr><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">1000m</span></td><td class="f-desc">1 full CPU core</td></tr>
+        <tr><td><span class="f-name">500m</span></td><td class="f-desc">Half a CPU core</td></tr>
+        <tr><td><span class="f-name">250m</span></td><td class="f-desc">Quarter of a CPU core</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Useful Deployment commands</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get deployments</span>
+<span class="c-cmd">kubectl rollout status deployment/</span><span class="c-val">express-deployment</span>
+<span class="c-cmd">kubectl rollout undo deployment/</span><span class="c-val">express-deployment</span>    <span class="c-comment"># rollback</span>
+<span class="c-cmd">kubectl scale deployment</span> <span class="c-val">express-deployment</span> <span class="c-flag">--replicas</span>=<span class="c-val">5</span>
+<span class="c-cmd">kubectl rollout restart deployment/</span><span class="c-val">express-deployment</span> <span class="c-comment"># re-pull image</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       4. REPLICASET
+  ═══════════════════════════════════ -->
+  <section class="section" id="replicaset">
+    <div class="section-header">
+      <div class="section-num-big">04</div>
+      <div class="section-title-block">
+        <div class="section-title">ReplicaSet</div>
+        <div class="section-subtitle">Ensures a fixed number of identical pods are always running</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>A <strong>ReplicaSet</strong> is the component that guarantees <em>N</em> copies of your pod are always running. If a pod crashes, ReplicaSet creates a replacement. If you have too many pods, it deletes extras. You almost never create a ReplicaSet directly — a <strong>Deployment creates and manages a ReplicaSet for you</strong>, and also handles rolling updates and rollbacks on top of it.</p>
+    </div>
+
+    <h3>Deployment → ReplicaSet → Pods relationship</h3>
+    <div class="scale-diagram">
+      <span class="hi">Deployment</span>  →  owns and manages a ReplicaSet<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="hi">ReplicaSet</span>  →  ensures <em>replicas: 2</em> pods are always alive<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="green">Pod 1 (running ✅)   Pod 2 (running ✅)</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓  Pod 1 crashes<br/>
+      <span class="red">ReplicaSet detects: 1 pod running, desired is 2</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="green">ReplicaSet creates Pod 3 automatically ✅</span>
+    </div>
+
+    <h3>Why you don't write ReplicaSet YAML directly</h3>
+    <table class="flag-table">
+      <thead><tr><th>If you use</th><th>What you get</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">Deployment</span></td><td class="f-desc">ReplicaSet management + rolling updates + rollback history. Always use this in practice.</td></tr>
+        <tr><td><span class="f-name">ReplicaSet directly</span></td><td class="f-desc">Pod count maintenance only. No rolling updates, no rollback. Not recommended.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>When you run <code>kubectl get replicasets</code> you'll see an auto-generated ReplicaSet like <code>express-deployment-7d9f8b6c4</code> — the hash suffix is a fingerprint of the pod template. When you update the image, a <strong>new ReplicaSet</strong> is created and the old one is scaled down to zero (but kept for rollback).</p>
+    </div>
+
+    <h3>Viewing ReplicaSets</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get replicasets</span>                          <span class="c-comment"># list all ReplicaSets</span>
+<span class="c-cmd">kubectl describe replicaset</span> <span class="c-val">&lt;rs-name&gt;</span>           <span class="c-comment"># details + events</span>
+
+<span class="c-comment"># After a rollout you will see TWO replicasets:</span>
+<span class="c-comment"># express-deployment-7d9f8b6c4   2         2         2       (new — active)</span>
+<span class="c-comment"># express-deployment-5c8a3d1b2   0         0         0       (old — kept for rollback)</span></pre>
+    </div>
+
+    <h3>How ReplicaSet selects pods</h3>
+    <p>ReplicaSet uses <strong>label selectors</strong> — it looks for pods with matching labels and counts them. If you manually create a pod with the same labels, the ReplicaSet will count it and may delete one of its own pods to maintain the desired count. This is why labels must be unique per Deployment.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">replicaset.yaml — for reference only, use Deployment in practice</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">apps/v1</span>
+<span class="c-key">kind</span>: <span class="c-val">ReplicaSet</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">express-rs</span>
+<span class="c-key">spec</span>:
+  <span class="c-key">replicas</span>: <span class="c-val">2</span>                  <span class="c-comment"># desired pod count</span>
+  <span class="c-key">selector</span>:
+    <span class="c-key">matchLabels</span>:
+      <span class="c-key">app</span>: <span class="c-val">express</span>            <span class="c-comment"># manage pods with this label</span>
+  <span class="c-key">template</span>:
+    <span class="c-key">metadata</span>:
+      <span class="c-key">labels</span>:
+        <span class="c-key">app</span>: <span class="c-val">express</span>
+    <span class="c-key">spec</span>:
+      <span class="c-key">containers</span>:
+        - <span class="c-key">name</span>: <span class="c-val">express</span>
+          <span class="c-key">image</span>: <span class="c-val">express-k8s:latest</span>
+          <span class="c-key">imagePullPolicy</span>: <span class="c-val">IfNotPresent</span>
+          <span class="c-key">ports</span>:
+            - <span class="c-key">containerPort</span>: <span class="c-val">3000</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       5. SERVICE  (was 4)
+  ═══════════════════════════════════ -->
+  <section class="section" id="service">
+    <div class="section-header">
+      <div class="section-num-big">04</div>
+      <div class="section-title-block">
+        <div class="section-title">Service</div>
+        <div class="section-subtitle">Stable network endpoint that routes traffic to pods</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>Pods are temporary — they crash and restart with new IP addresses. A <strong>Service</strong> gives you a stable endpoint that never changes. It finds pods using <strong>label selectors</strong> and load balances traffic across all matching pods automatically. When a pod is added or removed, the Service updates its list instantly.</p>
+    </div>
+
+    <h3>How Service finds pods (Labels & Selectors)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">service.yaml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">v1</span>              <span class="c-comment"># Service is a core resource</span>
+<span class="c-key">kind</span>: <span class="c-val">Service</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">express-service</span>
+<span class="c-key">spec</span>:
+  <span class="c-key">selector</span>:
+    <span class="c-key">app</span>: <span class="c-val">express</span>            <span class="c-comment"># find ALL pods with label app=express</span>
+  <span class="c-key">ports</span>:
+    - <span class="c-key">protocol</span>: <span class="c-val">TCP</span>
+      <span class="c-key">port</span>: <span class="c-val">80</span>              <span class="c-comment"># port the service listens on (inside cluster)</span>
+      <span class="c-key">targetPort</span>: <span class="c-val">3000</span>      <span class="c-comment"># port your app listens on inside the container</span>
+  <span class="c-key">type</span>: <span class="c-val">ClusterIP</span>          <span class="c-comment"># only accessible inside the cluster</span></pre>
+    </div>
+
+    <h3>Three Service types</h3>
+    <table class="compare">
+      <thead><tr><th>Type</th><th>Accessible from</th><th>Use case</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="row-label">ClusterIP</td>
+          <td class="col-a">Inside cluster only</td>
+          <td class="col-b">Pod-to-pod communication. Default type. Used with Ingress.</td>
+        </tr>
+        <tr>
+          <td class="row-label">NodePort</td>
+          <td class="col-a">External via port number</td>
+          <td class="col-b">Quick local testing. Access via localhost:30001. No Ingress needed.</td>
+        </tr>
+        <tr>
+          <td class="row-label">LoadBalancer</td>
+          <td class="col-a">External via cloud LB</td>
+          <td class="col-b">Production on AWS/GCP. Creates real Load Balancer. Costs money.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>port vs targetPort</h3>
+    <table class="flag-table">
+      <thead><tr><th>Field</th><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">port</span></td><td><span class="f-val">80</span></td><td class="f-desc">The port the Service exposes inside the cluster. Other pods call this service on port 80.</td></tr>
+        <tr><td><span class="f-name">targetPort</span></td><td><span class="f-val">3000</span></td><td class="f-desc">The port your app is actually listening on inside the container. Must match containerPort in deployment.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>NodePort for local testing</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">service.yaml (NodePort)</span></div>
+      <pre><span class="c-key">type</span>: <span class="c-val">NodePort</span>
+<span class="c-key">ports</span>:
+  - <span class="c-key">port</span>: <span class="c-val">80</span>
+    <span class="c-key">targetPort</span>: <span class="c-val">3000</span>
+    <span class="c-key">nodePort</span>: <span class="c-val">30001</span>    <span class="c-comment"># access via localhost:30001 in browser</span></pre>
+    </div>
+
+    <h3>How Service load balances</h3>
+    <div class="scale-diagram">
+      <span class="hi">Service receives request (selector: app=express)</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="hi">Looks up Endpoints list (live pod IPs)</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="green">Request 1 → Pod 1 (192.168.1.10)</span><br/>
+      <span class="green">Request 2 → Pod 2 (192.168.1.11)</span><br/>
+      <span class="green">Request 3 → Pod 3 (192.168.1.12)</span><br/>
+      <span class="green">Request 4 → Pod 1 (round robin) ✅</span>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get services</span>
+<span class="c-cmd">kubectl get endpoints</span> <span class="c-val">express-service</span>   <span class="c-comment"># see which pod IPs are in the pool</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       5. INGRESS
+  ═══════════════════════════════════ -->
+  <section class="section" id="ingress">
+    <div class="section-header">
+      <div class="section-num-big">05</div>
+      <div class="section-title-block">
+        <div class="section-title">Ingress</div>
+        <div class="section-subtitle">HTTP routing rules — host and path based traffic routing</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>An <strong>Ingress</strong> resource is a set of HTTP routing rules written in YAML. It says things like: "traffic for <code>express.local/</code> should go to <code>express-service</code>" or "traffic for <code>express.local/auth</code> should go to <code>auth-service</code>". The Ingress itself does nothing — it only works when an <strong>Ingress Controller</strong> is installed to read and act on these rules.</p>
+    </div>
+
+    <h3>Full ingress.yaml with explanation</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">ingress.yaml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">networking.k8s.io/v1</span>   <span class="c-comment"># Ingress is in the networking group</span>
+<span class="c-key">kind</span>: <span class="c-val">Ingress</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">express-ingress</span>
+<span class="c-key">spec</span>:
+  <span class="c-key">ingressClassName</span>: <span class="c-val">nginx</span>         <span class="c-comment"># which controller handles this rule</span>
+  <span class="c-key">rules</span>:
+    - <span class="c-key">host</span>: <span class="c-val">express.local</span>          <span class="c-comment"># domain to match</span>
+      <span class="c-key">http</span>:
+        <span class="c-key">paths</span>:
+          - <span class="c-key">path</span>: <span class="c-val">/</span>
+            <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>         <span class="c-comment"># match / and everything after</span>
+            <span class="c-key">backend</span>:
+              <span class="c-key">service</span>:
+                <span class="c-key">name</span>: <span class="c-val">express-service</span>
+                <span class="c-key">port</span>:
+                  <span class="c-key">number</span>: <span class="c-val">80</span></pre>
+    </div>
+
+    <h3>Path based routing — multiple services on one domain</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">ingress.yaml — multi service</span></div>
+      <pre><span class="c-key">rules</span>:
+  - <span class="c-key">host</span>: <span class="c-val">express.local</span>
+    <span class="c-key">http</span>:
+      <span class="c-key">paths</span>:
+        - <span class="c-key">path</span>: <span class="c-val">/</span>
+          <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>
+          <span class="c-key">backend</span>:
+            <span class="c-key">service</span>:
+              <span class="c-key">name</span>: <span class="c-val">main-service</span>       <span class="c-comment"># express.local/ → main app</span>
+              <span class="c-key">port</span>: { <span class="c-key">number</span>: <span class="c-val">80</span> }
+        - <span class="c-key">path</span>: <span class="c-val">/auth</span>
+          <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>
+          <span class="c-key">backend</span>:
+            <span class="c-key">service</span>:
+              <span class="c-key">name</span>: <span class="c-val">auth-service</span>       <span class="c-comment"># express.local/auth → auth service</span>
+              <span class="c-key">port</span>: { <span class="c-key">number</span>: <span class="c-val">80</span> }</pre>
+    </div>
+
+    <h3>Key fields explained</h3>
+    <table class="flag-table">
+      <thead><tr><th>Field</th><th>Value</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">ingressClassName</span></td><td><span class="f-val">nginx</span></td><td class="f-desc">Tells Kubernetes which Ingress Controller should handle this rule. If you have multiple controllers (nginx, traefik), each only picks up rules meant for it.</td></tr>
+        <tr><td><span class="f-name">host</span></td><td><span class="f-val">express.local</span></td><td class="f-desc">Only traffic with this Host header matches this rule. Add it to /etc/hosts for local development.</td></tr>
+        <tr><td><span class="f-name">pathType: Prefix</span></td><td><span class="f-val">Prefix</span></td><td class="f-desc">Matches the path and everything after it. /api matches /api/users, /api/data etc.</td></tr>
+        <tr><td><span class="f-name">pathType: Exact</span></td><td><span class="f-val">Exact</span></td><td class="f-desc">Only matches that exact path. /api does NOT match /api/users.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>For local development — skip the host</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">ingress.yaml — no host (easiest)</span></div>
+      <pre><span class="c-key">rules</span>:
+  - <span class="c-key">http</span>:                     <span class="c-comment"># no host: field — matches all traffic</span>
+      <span class="c-key">paths</span>:
+        - <span class="c-key">path</span>: <span class="c-val">/</span>
+          <span class="c-key">pathType</span>: <span class="c-val">Prefix</span>
+          <span class="c-key">backend</span>:
+            <span class="c-key">service</span>:
+              <span class="c-key">name</span>: <span class="c-val">express-service</span>
+              <span class="c-key">port</span>:
+                <span class="c-key">number</span>: <span class="c-val">80</span></pre>
+    </div>
+    <p>Access via <code>http://localhost</code> directly — no /etc/hosts edit needed.</p>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       6. INGRESS CONTROLLER
+  ═══════════════════════════════════ -->
+  <section class="section" id="ingress-controller">
+    <div class="section-header">
+      <div class="section-num-big">06</div>
+      <div class="section-title-block">
+        <div class="section-title">Ingress Controller</div>
+        <div class="section-subtitle">The actual nginx pod that handles real traffic</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>The <strong>Ingress Controller</strong> is a pod running nginx inside your cluster. It watches all Ingress resources and configures itself to route traffic according to those rules. Without the controller, your ingress.yaml is just a config file sitting there doing nothing. The controller is what makes it actually work.</p>
+    </div>
+
+    <h3>Ingress vs Ingress Controller</h3>
+    <table class="compare">
+      <thead><tr><th>What</th><th>Ingress Resource</th><th>Ingress Controller</th></tr></thead>
+      <tbody>
+        <tr><td class="row-label">What it is</td><td class="col-a">A YAML file with routing rules</td><td class="col-b">An actual nginx pod running in your cluster</td></tr>
+        <tr><td class="row-label">Created by</td><td class="col-a">You — kubectl apply -f ingress.yaml</td><td class="col-b">You install once — kubectl apply -f nginx-url</td></tr>
+        <tr><td class="row-label">Does it route traffic?</td><td class="col-a">No — it only defines rules</td><td class="col-b">Yes — reads rules and routes real HTTP traffic</td></tr>
+        <tr><td class="row-label">Namespace</td><td class="col-a">default (your app namespace)</td><td class="col-b">ingress-nginx (its own namespace)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="step-label">Install nginx Ingress Controller</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl apply -f</span> \
+  <span class="c-str">https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml</span></pre>
+    </div>
+
+    <div class="step-label green">Verify controller is running</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get pods -n</span> <span class="c-val">ingress-nginx</span>
+
+<span class="c-comment"># Expected output:</span>
+NAME                                        READY   STATUS
+ingress-nginx-controller-xxxxxxxxx-xxxxx    <span class="c-str">1/1     Running</span> ✅</pre>
+    </div>
+
+    <h3>Add express.local to /etc/hosts (Mac)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">sudo nano</span> <span class="c-val">/etc/hosts</span>
+
+<span class="c-comment"># Add this line at the bottom:</span>
+<span class="c-str">127.0.0.1  express.local</span></pre>
+    </div>
+    <p>Now <code>http://express.local</code> in your browser will route to your nginx Ingress Controller on localhost.</p>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>ingressClassName: nginx</strong> in your ingress.yaml is how the controller knows which rules are meant for it. If you had traefik installed too, it only picks up rules with <code>ingressClassName: traefik</code>.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       7. ENABLE KUBERNETES
+  ═══════════════════════════════════ -->
+  <section class="section" id="enable-k8s">
+    <div class="section-header">
+      <div class="section-num-big">07</div>
+      <div class="section-title-block">
+        <div class="section-title">Enable Kubernetes on Docker Desktop</div>
+        <div class="section-subtitle">One-click setup — no extra tools needed</div>
+      </div>
+    </div>
+
+    <div class="step-label">Step 1 — Enable in Docker Desktop settings</div>
+    <p>Open Docker Desktop → click the <strong>gear icon</strong> (Settings) → click <strong>Kubernetes</strong> in the left sidebar → check <strong>Enable Kubernetes</strong> → click <strong>Apply &amp; Restart</strong>.</p>
+    <p>Wait 2–3 minutes. When the bottom status bar shows a green Kubernetes icon, it is ready.</p>
+
+    <div class="step-label green">Step 2 — Verify kubectl is working</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl version</span>
+<span class="c-cmd">kubectl get nodes</span>
+
+<span class="c-comment"># Expected output:</span>
+NAME             STATUS   ROLES
+docker-desktop   <span class="c-str">Ready</span>    control-plane ✅</pre>
+    </div>
+
+    <div class="step-label blue">Step 3 — Check current context</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl config current-context</span>
+<span class="c-comment"># Should return: docker-desktop</span>
+
+<span class="c-cmd">kubectl config get-contexts</span>
+<span class="c-comment"># Lists all clusters kubectl knows about</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>The <code>~/.kube/config</code> file stores all cluster connection info. When you later create an EKS cluster with eksctl, it adds a new entry here and switches the current context to EKS automatically. Switch back with <code>kubectl config use-context docker-desktop</code>.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       8. YAML FILES
+  ═══════════════════════════════════ -->
+  <section class="section" id="yaml-files">
+    <div class="section-header">
+      <div class="section-num-big">08</div>
+      <div class="section-title-block">
+        <div class="section-title">Writing YAML Files</div>
+        <div class="section-subtitle">Structure, apiVersion, and how to combine files</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>Every Kubernetes resource is defined in a YAML file. Each file must have <strong>apiVersion</strong>, <strong>kind</strong>, <strong>metadata</strong>, and <strong>spec</strong>. The <code>apiVersion</code> tells Kubernetes which API group the resource belongs to. Different resources live in different groups.</p>
+    </div>
+
+    <h3>apiVersion — which API group</h3>
+    <table class="flag-table">
+      <thead><tr><th>Resource</th><th>apiVersion</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">Pod, Service, ConfigMap, Secret</span></td><td><span class="f-val">v1</span></td><td class="f-desc">Core group — the oldest, most fundamental Kubernetes resources. No group prefix needed.</td></tr>
+        <tr><td><span class="f-name">Deployment, StatefulSet, DaemonSet</span></td><td><span class="f-val">apps/v1</span></td><td class="f-desc">Apps group — higher-level workload resources that manage pods.</td></tr>
+        <tr><td><span class="f-name">Ingress, NetworkPolicy</span></td><td><span class="f-val">networking.k8s.io/v1</span></td><td class="f-desc">Networking group — resources that manage cluster networking.</td></tr>
+        <tr><td><span class="f-name">HorizontalPodAutoscaler</span></td><td><span class="f-val">autoscaling/v2</span></td><td class="f-desc">Autoscaling group — resources that control scaling behavior.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Putting multiple resources in one file</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">combined.yaml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">apps/v1</span>
+<span class="c-key">kind</span>: <span class="c-val">Deployment</span>
+<span class="c-comment"># ... deployment config</span>
+
+<span class="c-pipe">---</span>                    <span class="c-comment"># separator — new resource starts here</span>
+
+<span class="c-key">apiVersion</span>: <span class="c-val">v1</span>
+<span class="c-key">kind</span>: <span class="c-val">Service</span>
+<span class="c-comment"># ... service config</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p>Keep files <strong>separate</strong> as your project grows. One file per resource makes it easier to find and edit things. Use <code>kubectl apply -f k8s/</code> to apply the entire folder at once.</p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       9. LABELS & SELECTORS
+  ═══════════════════════════════════ -->
+  <section class="section" id="labels">
+    <div class="section-header">
+      <div class="section-num-big">09</div>
+      <div class="section-title-block">
+        <div class="section-title">Labels &amp; Selectors</div>
+        <div class="section-subtitle">How Deployments manage pods and Services find them</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p><strong>Labels</strong> are key-value tags on pods. <strong>Selectors</strong> are filters used by Deployments and Services to find pods with specific labels. This is how all three resources connect — the Deployment owns pods via selector, the Service routes to pods via selector. No hardcoded pod names or IPs anywhere.</p>
+    </div>
+
+    <h3>The three-way connection</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">How they connect</span></div>
+      <pre><span class="c-comment"># deployment.yaml</span>
+<span class="c-key">selector</span>:
+  <span class="c-key">matchLabels</span>:
+    <span class="c-key">app</span>: <span class="c-val">express</span>      <span class="c-comment"># (1) Deployment manages pods with this label</span>
+<span class="c-key">template</span>:
+  <span class="c-key">metadata</span>:
+    <span class="c-key">labels</span>:
+      <span class="c-key">app</span>: <span class="c-val">express</span>    <span class="c-comment"># (2) Pod gets stamped with this label</span>
+
+<span class="c-comment">---</span>
+<span class="c-comment"># service.yaml</span>
+<span class="c-key">selector</span>:
+  <span class="c-key">app</span>: <span class="c-val">express</span>        <span class="c-comment"># (3) Service routes to pods with this label</span></pre>
+    </div>
+
+    <h3>Selector matching rules</h3>
+    <table class="flag-table">
+      <thead><tr><th>Pod Labels</th><th>Selector: app=express</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-val">app: express</span></td><td class="f-desc">Matches</td><td><span class="pill pill-green">Selected ✅</span></td></tr>
+        <tr><td><span class="f-val">app: express, env: prod</span></td><td class="f-desc">Matches (extra label ignored)</td><td><span class="pill pill-green">Selected ✅</span></td></tr>
+        <tr><td><span class="f-val">app: backend</span></td><td class="f-desc">Does not match</td><td><span class="pill pill-red">Ignored ❌</span></td></tr>
+        <tr><td><span class="f-val">app: express, env: staging</span></td><td class="f-desc">Partially matches selector app=express only</td><td><span class="pill pill-green">Selected ✅</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Multiple deployments using labels</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Using env label to separate deployments</span></div>
+      <pre><span class="c-comment"># staging-deployment.yaml</span>
+<span class="c-key">selector</span>:
+  <span class="c-key">matchLabels</span>:
+    <span class="c-key">app</span>: <span class="c-val">express</span>
+    <span class="c-key">env</span>: <span class="c-val">staging</span>     <span class="c-comment"># only manages staging pods</span>
+
+<span class="c-comment"># production-deployment.yaml</span>
+<span class="c-key">selector</span>:
+  <span class="c-key">matchLabels</span>:
+    <span class="c-key">app</span>: <span class="c-val">express</span>
+    <span class="c-key">env</span>: <span class="c-val">production</span>  <span class="c-comment"># only manages production pods</span></pre>
+    </div>
+    <p>Both deployments exist in the same cluster but never interfere with each other because their selectors are different.</p>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       10. DEPLOY YOUR APP
+  ═══════════════════════════════════ -->
+  <section class="section" id="deploy">
+    <div class="section-header">
+      <div class="section-num-big">10</div>
+      <div class="section-title-block">
+        <div class="section-title">Deploy Your App</div>
+        <div class="section-subtitle">Build image, apply YAML, access in browser</div>
+      </div>
+    </div>
+
+    <div class="step-label">Step 1 — Build Docker image</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">cd</span> <span class="c-val">Backend/</span>
+<span class="c-cmd">docker build -t</span> <span class="c-val">express-k8s:latest</span> <span class="c-val">.</span></pre>
+    </div>
+
+    <div class="step-label">Step 2 — Apply all YAML files</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/</span>    <span class="c-comment"># applies all files in the k8s folder</span>
+
+<span class="c-comment"># Or apply individually:</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/deployment.yaml</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/service.yaml</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/ingress.yaml</span></pre>
+    </div>
+
+    <div class="step-label green">Step 3 — Verify everything is running</div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get pods</span>           <span class="c-comment"># STATUS: Running, READY: 1/1</span>
+<span class="c-cmd">kubectl get services</span>       <span class="c-comment"># service exists with correct ports</span>
+<span class="c-cmd">kubectl get ingress</span>        <span class="c-comment"># ingress has an ADDRESS</span></pre>
+    </div>
+
+    <div class="step-label blue">Step 4 — Access in browser</div>
+    <table class="flag-table">
+      <thead><tr><th>Setup</th><th>URL</th></tr></thead>
+      <tbody>
+        <tr><td><span class="f-name">No host in ingress</span></td><td><span class="f-val">http://localhost</span></td></tr>
+        <tr><td><span class="f-name">host: express.local (with /etc/hosts)</span></td><td><span class="f-val">http://express.local</span></td></tr>
+        <tr><td><span class="f-name">NodePort service</span></td><td><span class="f-val">http://localhost:30001</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Update your app</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-comment"># 1. Rebuild image after code changes</span>
+<span class="c-cmd">docker build -t</span> <span class="c-val">express-k8s:latest</span> <span class="c-val">.</span>
+
+<span class="c-comment"># 2. Restart deployment to use new image</span>
+<span class="c-cmd">kubectl rollout restart deployment/</span><span class="c-val">express-deployment</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       11. DEBUG COMMANDS
+  ═══════════════════════════════════ -->
+  <section class="section" id="debug">
+    <div class="section-header">
+      <div class="section-num-big">11</div>
+      <div class="section-title-block">
+        <div class="section-title">Debug Commands</div>
+        <div class="section-subtitle">Finding and fixing problems in your cluster</div>
+      </div>
+    </div>
+
+    <h3>Common errors and what to do</h3>
+    <table class="flag-table">
+      <thead><tr><th>Error</th><th>Cause</th><th>Debug command</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">ImagePullBackOff</span></td>
+          <td class="f-desc">Cannot pull Docker image. Usually local image not built or wrong name.</td>
+          <td class="f-desc"><code>kubectl describe pod &lt;name&gt;</code> → check Events section</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">CrashLoopBackOff</span></td>
+          <td class="f-desc">Container keeps crashing. App has a startup error.</td>
+          <td class="f-desc"><code>kubectl logs &lt;pod-name&gt;</code> → see app error output</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">503 Service Unavailable</span></td>
+          <td class="f-desc">Ingress controller running but no pods found. Label mismatch.</td>
+          <td class="f-desc"><code>kubectl get endpoints &lt;service&gt;</code> → if &lt;none&gt; labels don't match</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">404 Not Found</span></td>
+          <td class="f-desc">nginx running but no matching ingress rule for that host/path.</td>
+          <td class="f-desc"><code>kubectl describe ingress &lt;name&gt;</code> → check rules</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">Pending (pod)</span></td>
+          <td class="f-desc">No node has enough CPU/memory to schedule the pod.</td>
+          <td class="f-desc"><code>kubectl describe pod &lt;name&gt;</code> → check Events</td>
+        </tr>
+        <tr>
+          <td><span class="f-name" style="color:var(--accent)">ECONNREFUSED</span></td>
+          <td class="f-desc">Pod calling another service using localhost instead of service name.</td>
+          <td class="f-desc">Use <code>http://service-name</code> not <code>http://localhost:PORT</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Essential debug commands</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-comment"># Check what is running</span>
+<span class="c-cmd">kubectl get pods</span>
+<span class="c-cmd">kubectl get services</span>
+<span class="c-cmd">kubectl get ingress</span>
+<span class="c-cmd">kubectl get all</span>                              <span class="c-comment"># everything at once</span>
+
+<span class="c-comment"># Deep inspect</span>
+<span class="c-cmd">kubectl describe pod</span> <span class="c-val">&lt;pod-name&gt;</span>              <span class="c-comment"># events + full config</span>
+<span class="c-cmd">kubectl describe ingress</span> <span class="c-val">&lt;ingress-name&gt;</span>      <span class="c-comment"># routing rules + backend IPs</span>
+<span class="c-cmd">kubectl describe service</span> <span class="c-val">&lt;service-name&gt;</span>      <span class="c-comment"># selector + endpoints</span>
+
+<span class="c-comment"># Logs</span>
+<span class="c-cmd">kubectl logs</span> <span class="c-val">&lt;pod-name&gt;</span>                      <span class="c-comment"># app output</span>
+<span class="c-cmd">kubectl logs</span> <span class="c-val">&lt;pod-name&gt;</span> <span class="c-flag">-f</span>                  <span class="c-comment"># follow live</span>
+<span class="c-cmd">kubectl logs</span> <span class="c-val">&lt;pod-name&gt;</span> <span class="c-flag">--previous</span>          <span class="c-comment"># logs from crashed container</span>
+
+<span class="c-comment"># Network debug</span>
+<span class="c-cmd">kubectl get endpoints</span> <span class="c-val">&lt;service-name&gt;</span>        <span class="c-comment"># pod IPs in service pool</span>
+<span class="c-cmd">kubectl exec -it</span> <span class="c-val">&lt;pod-name&gt;</span> <span class="c-pipe">--</span> <span class="c-val">sh</span>           <span class="c-comment"># shell inside pod</span>
+<span class="c-comment"># Inside pod: test another service</span>
+<span class="c-str">wget -qO- http://some-service/api/data</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       12. AUTOSCALING (HPA)
+  ═══════════════════════════════════ -->
+  <section class="section" id="hpa">
+    <div class="section-header">
+      <div class="section-num-big">12</div>
+      <div class="section-title-block">
+        <div class="section-title">Autoscaling (HPA)</div>
+        <div class="section-subtitle">Automatically add and remove pods based on CPU usage</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>The <strong>HorizontalPodAutoscaler (HPA)</strong> watches CPU usage across your pods and automatically scales the replica count up or down. When CPU exceeds your threshold it adds pods. When traffic drops it removes them. It requires <strong>metrics-server</strong> to read CPU data — on Docker Desktop this is <em>not</em> pre-installed and must be added manually.</p>
+    </div>
+
+    <h3>Step 0 — Install Metrics Server (required for HPA)</h3>
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>HPA will not work without metrics-server.</strong> Running <code>kubectl top pods</code> will return <em>"Metrics API not available"</em> and HPA will show <code>&lt;unknown&gt;/50%</code> for CPU until metrics-server is installed and running.</p>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal — install metrics-server on Docker Desktop</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-comment"># Option A: Official manifest with kubelet insecure TLS patch (recommended for Docker Desktop)</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-str">https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml</span>
+
+<span class="c-comment"># Docker Desktop uses a self-signed cert — patch metrics-server to skip TLS verify:</span>
+<span class="c-cmd">kubectl patch deployment metrics-server</span> <span class="c-flag">-n</span> <span class="c-val">kube-system</span> \
+  <span class="c-flag">--type</span>=<span class="c-val">json</span> \
+  <span class="c-flag">-p</span>=<span class="c-str">'[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'</span>
+
+<span class="c-comment"># Wait for it to be ready (~30 seconds)</span>
+<span class="c-cmd">kubectl rollout status deployment/metrics-server</span> <span class="c-flag">-n</span> <span class="c-val">kube-system</span>
+
+<span class="c-comment"># Verify it works — you should see CPU and Memory columns</span>
+<span class="c-cmd">kubectl top nodes</span>
+<span class="c-cmd">kubectl top pods</span></pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal — Option B: Helm install (if you have Helm)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">helm repo add</span> <span class="c-val">metrics-server</span> <span class="c-str">https://kubernetes-sigs.github.io/metrics-server/</span>
+<span class="c-cmd">helm repo update</span>
+<span class="c-cmd">helm upgrade --install metrics-server metrics-server/metrics-server</span> \
+  <span class="c-flag">--namespace</span> <span class="c-val">kube-system</span> \
+  <span class="c-flag">--set</span> <span class="c-val">args={--kubelet-insecure-tls}</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Where does metrics-server run?</strong> It runs as a pod in the <code>kube-system</code> namespace on the master/control-plane node. Verify with: <code>kubectl get pods -n kube-system | grep metrics</code>. You should see <code>metrics-server-xxxx   1/1   Running</code>.</p>
+    </div>
+
+    <h3>Create HPA via command</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl autoscale deployment</span> <span class="c-val">express-deployment</span> \
+  <span class="c-flag">--min</span>=<span class="c-val">1</span> \
+  <span class="c-flag">--max</span>=<span class="c-val">5</span> \
+  <span class="c-flag">--cpu-percent</span>=<span class="c-val">50</span></pre>
+    </div>
+
+    <h3>Or as a YAML file (recommended)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">hpa.yaml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">autoscaling/v2</span>
+<span class="c-key">kind</span>: <span class="c-val">HorizontalPodAutoscaler</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">express-hpa</span>
+<span class="c-key">spec</span>:
+  <span class="c-key">scaleTargetRef</span>:
+    <span class="c-key">apiVersion</span>: <span class="c-val">apps/v1</span>
+    <span class="c-key">kind</span>: <span class="c-val">Deployment</span>
+    <span class="c-key">name</span>: <span class="c-val">express-deployment</span>    <span class="c-comment"># must match deployment name</span>
+  <span class="c-key">minReplicas</span>: <span class="c-val">1</span>
+  <span class="c-key">maxReplicas</span>: <span class="c-val">5</span>
+  <span class="c-key">metrics</span>:
+    - <span class="c-key">type</span>: <span class="c-val">Resource</span>
+      <span class="c-key">resource</span>:
+        <span class="c-key">name</span>: <span class="c-val">cpu</span>
+        <span class="c-key">target</span>:
+          <span class="c-key">type</span>: <span class="c-val">Utilization</span>
+          <span class="c-key">averageUtilization</span>: <span class="c-val">50</span>   <span class="c-comment"># scale when CPU > 50%</span></pre>
+    </div>
+
+    <h3>HPA scaling flow</h3>
+    <div class="scale-diagram">
+      <span class="hi">Traffic increases → CPU per pod goes above 50%</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="green">HPA adds new pod (up to maxReplicas: 5)</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="hi">Requests spread across more pods</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="green">CPU per pod drops — each pod handles less ✅</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="hi">Traffic drops → CPU goes low</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;↓<br/>
+      <span class="green">HPA removes extra pods (down to minReplicas: 1) ✅</span>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>resources.requests must be set</strong> in your deployment for HPA to work. HPA calculates utilization as <em>current CPU / requested CPU × 100</em>. Without requests defined, HPA has no baseline to calculate from and will not scale.</p>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl get hpa</span>              <span class="c-comment"># see current CPU%, desired vs actual replicas</span>
+<span class="c-cmd">kubectl top pods</span>             <span class="c-comment"># real-time CPU and memory per pod</span></pre>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════
+       14. SECRETS (LOCAL ENV)
+  ═══════════════════════════════════ -->
+  <section class="section" id="secrets">
+    <div class="section-header">
+      <div class="section-num-big">14</div>
+      <div class="section-title-block">
+        <div class="section-title">Managing Secrets Locally</div>
+        <div class="section-subtitle">Store sensitive config (DB passwords, API keys, tokens) safely in your local cluster</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div class="concept-label">Key Concept</div>
+      <p>A <strong>Secret</strong> stores sensitive data like database passwords, API keys, and JWT secrets inside the Kubernetes cluster — encoded in base64. Pods then access these values as environment variables or file mounts. Unlike a ConfigMap (which is for non-sensitive config), Secrets signal to Kubernetes that this data should be handled with care (not logged, RBAC-restricted). In a local Docker Desktop setup secrets are fine as-is; in production you would use external vaults.</p>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>base64 is NOT encryption.</strong> It is just encoding. Anyone with <code>kubectl get secret</code> access can decode it. Never commit secret YAML files to git. Use <code>.gitignore</code> to exclude them, or use a tool like <em>sealed-secrets</em> or <em>external-secrets</em> for production.</p>
+    </div>
+
+    <h3>Step 1 — Create base64 values</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal — encode your values</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-comment"># Encode any string to base64</span>
+<span class="c-cmd">echo -n</span> <span class="c-str">'mypassword'</span> <span class="c-pipe">|</span> <span class="c-cmd">base64</span>
+<span class="c-comment"># → bXlwYXNzd29yZA==</span>
+
+<span class="c-cmd">echo -n</span> <span class="c-str">'mongodb://localhost:27017/mydb'</span> <span class="c-pipe">|</span> <span class="c-cmd">base64</span>
+<span class="c-comment"># → bW9uZ29kYjovL2xvY2FsaG9zdDoyNzAxNy9teWRi</span>
+
+<span class="c-comment"># Decode to verify</span>
+<span class="c-cmd">echo</span> <span class="c-str">'bXlwYXNzd29yZA=='</span> <span class="c-pipe">|</span> <span class="c-cmd">base64 --decode</span></pre>
+    </div>
+
+    <h3>Step 2 — Write secret.yaml</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">k8s/secret.yaml</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">v1</span>
+<span class="c-key">kind</span>: <span class="c-val">Secret</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">express-secret</span>
+<span class="c-key">type</span>: <span class="c-val">Opaque</span>                <span class="c-comment"># Opaque = generic key-value secret</span>
+<span class="c-key">data</span>:
+  <span class="c-key">MONGO_URI</span>: <span class="c-val">bW9uZ29kYjovL2xvY2FsaG9zdDoyNzAxNy9teWRi</span>  <span class="c-comment"># base64 encoded</span>
+  <span class="c-key">JWT_SECRET</span>: <span class="c-val">bXlzdXBlcnNlY3JldGtleQ==</span>
+  <span class="c-key">DB_PASSWORD</span>: <span class="c-val">bXlwYXNzd29yZA==</span></pre>
+    </div>
+
+    <div class="note">
+      <div class="note-icon">💡</div>
+      <p><strong>Tip — use stringData instead of data</strong> to write plain text directly (Kubernetes encodes it for you). This is easier for local development but the result is identical in the cluster.</p>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">k8s/secret.yaml — using stringData (plaintext, easier locally)</span></div>
+      <pre><span class="c-key">apiVersion</span>: <span class="c-val">v1</span>
+<span class="c-key">kind</span>: <span class="c-val">Secret</span>
+<span class="c-key">metadata</span>:
+  <span class="c-key">name</span>: <span class="c-val">express-secret</span>
+<span class="c-key">type</span>: <span class="c-val">Opaque</span>
+<span class="c-key">stringData</span>:                  <span class="c-comment"># plain text — k8s base64-encodes automatically</span>
+  <span class="c-key">MONGO_URI</span>: <span class="c-val">"mongodb://localhost:27017/mydb"</span>
+  <span class="c-key">JWT_SECRET</span>: <span class="c-val">"mysupersecretkey"</span>
+  <span class="c-key">DB_PASSWORD</span>: <span class="c-val">"mypassword"</span></pre>
+    </div>
+
+    <h3>Step 3 — Apply the Secret</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/secret.yaml</span>
+
+<span class="c-comment"># Verify it was created</span>
+<span class="c-cmd">kubectl get secrets</span>
+<span class="c-cmd">kubectl describe secret</span> <span class="c-val">express-secret</span>   <span class="c-comment"># shows keys but NOT values</span>
+
+<span class="c-comment"># Decode a specific value to verify</span>
+<span class="c-cmd">kubectl get secret express-secret</span> <span class="c-flag">-o</span> <span class="c-val">jsonpath='{.data.MONGO_URI}'</span> <span class="c-pipe">|</span> <span class="c-cmd">base64 --decode</span></pre>
+    </div>
+
+    <h3>Step 4 — Inject Secret into your Deployment as env vars</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">deployment.yaml — env section</span></div>
+      <pre><span class="c-key">spec</span>:
+  <span class="c-key">containers</span>:
+    - <span class="c-key">name</span>: <span class="c-val">express</span>
+      <span class="c-key">image</span>: <span class="c-val">express-k8s:latest</span>
+      <span class="c-key">env</span>:
+        - <span class="c-key">name</span>: <span class="c-val">MONGO_URI</span>          <span class="c-comment"># name of env var inside the container</span>
+          <span class="c-key">valueFrom</span>:
+            <span class="c-key">secretKeyRef</span>:
+              <span class="c-key">name</span>: <span class="c-val">express-secret</span> <span class="c-comment"># secret name from metadata.name</span>
+              <span class="c-key">key</span>: <span class="c-val">MONGO_URI</span>         <span class="c-comment"># key inside the secret</span>
+        - <span class="c-key">name</span>: <span class="c-val">JWT_SECRET</span>
+          <span class="c-key">valueFrom</span>:
+            <span class="c-key">secretKeyRef</span>:
+              <span class="c-key">name</span>: <span class="c-val">express-secret</span>
+              <span class="c-key">key</span>: <span class="c-val">JWT_SECRET</span>
+        - <span class="c-key">name</span>: <span class="c-val">DB_PASSWORD</span>
+          <span class="c-key">valueFrom</span>:
+            <span class="c-key">secretKeyRef</span>:
+              <span class="c-key">name</span>: <span class="c-val">express-secret</span>
+              <span class="c-key">key</span>: <span class="c-val">DB_PASSWORD</span></pre>
+    </div>
+
+    <h3>Access in your Node.js/Express code</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">server.js</span></div>
+      <pre><span class="c-comment">// Kubernetes injects secrets as environment variables</span>
+<span class="c-cmd">const</span> <span class="c-val">mongoUri</span>    = process.env.MONGO_URI;
+<span class="c-cmd">const</span> <span class="c-val">jwtSecret</span>   = process.env.JWT_SECRET;
+<span class="c-cmd">const</span> <span class="c-val">dbPassword</span>  = process.env.DB_PASSWORD;
+
+<span class="c-comment">// Same code works locally with .env and in Kubernetes with Secrets</span></pre>
+    </div>
+
+    <h3>Secret vs ConfigMap — when to use which</h3>
+    <table class="compare">
+      <thead><tr><th>Use case</th><th>ConfigMap</th><th>Secret</th></tr></thead>
+      <tbody>
+        <tr><td class="row-label">Database password</td><td class="col-a">❌ Never</td><td class="col-b">✅ Yes</td></tr>
+        <tr><td class="row-label">API base URL</td><td class="col-b">✅ Yes</td><td class="col-a">Not needed</td></tr>
+        <tr><td class="row-label">JWT secret key</td><td class="col-a">❌ Never</td><td class="col-b">✅ Yes</td></tr>
+        <tr><td class="row-label">NODE_ENV = production</td><td class="col-b">✅ Yes</td><td class="col-a">Not needed</td></tr>
+        <tr><td class="row-label">MongoDB connection string</td><td class="col-a">❌ if it has password</td><td class="col-b">✅ Yes</td></tr>
+        <tr><td class="row-label">Port number</td><td class="col-b">✅ Yes</td><td class="col-a">Not needed</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Add secret.yaml to your project structure</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Project Layout (updated)</span></div>
+      <pre><span class="c-str">your-project/</span>
+├── <span class="c-str">Backend/</span>
+│   ├── <span class="c-val">server.js</span>
+│   ├── <span class="c-val">package.json</span>
+│   └── <span class="c-val">dockerfile</span>
+└── <span class="c-str">k8s/</span>
+    ├── <span class="c-val">deployment.yaml</span>
+    ├── <span class="c-val">service.yaml</span>
+    ├── <span class="c-val">ingress.yaml</span>
+    ├── <span class="c-val">hpa.yaml</span>
+    └── <span class="c-val">secret.yaml</span>       <span class="c-comment"># ← add to .gitignore !</span></pre>
+    </div>
+
+    <div class="warn">
+      <div class="note-icon">⚠️</div>
+      <p><strong>Always add secret.yaml to .gitignore.</strong> Committing secrets to git — even encoded base64 — is a serious security risk. Add <code>k8s/secret.yaml</code> to your <code>.gitignore</code> file. Share secrets with teammates via a secure channel (1Password, Bitwarden, private Slack DM), never via git.</p>
+    </div>
+
+    <h3>Apply order matters</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-label">Terminal — always apply secret BEFORE deployment</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <pre><span class="c-comment"># 1. Secret must exist before pods that reference it start up</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/secret.yaml</span>
+
+<span class="c-comment"># 2. Then apply deployment (pods can now find the secret)</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/deployment.yaml</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/service.yaml</span>
+<span class="c-cmd">kubectl apply -f</span> <span class="c-val">k8s/ingress.yaml</span>
+
+<span class="c-comment"># Verify env vars were injected into the pod</span>
+<span class="c-cmd">kubectl exec -it</span> <span class="c-val">&lt;pod-name&gt;</span> <span class="c-pipe">--</span> <span class="c-val">sh</span>
+<span class="c-comment"># Inside pod:</span>
+<span class="c-str">echo $MONGO_URI</span>
+<span class="c-str">echo $JWT_SECRET</span></pre>
+    </div>
+  </section>
+
+
+  <footer>
+    <span>Sheryians Coding School · Kubernetes Local Setup Notes</span>
+    <span>Docker Desktop · MERN Stack · nginx Ingress</span>
+  </footer>
+
+</main>
+</div>
+
+<script>
+// Active nav on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks  = document.querySelectorAll('nav a');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`nav a[href="#${e.target.id}"]`);
+      if (a) a.classList.add('active');
+    }
+  });
+}, { threshold: 0.25 });
+sections.forEach(s => io.observe(s));
+
+// Copy button
+function copyCode(btn) {
+  const text = btn.closest('.code-wrap').querySelector('pre').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1800);
+  });
+}
+</script>
+</body>
+</html>

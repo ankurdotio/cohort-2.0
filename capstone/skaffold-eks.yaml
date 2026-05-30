@@ -1,0 +1,70 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+
+build:
+  tagPolicy:
+    sha256: {}
+
+  platforms:
+    - linux/amd64 
+    
+  artifacts:
+  
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/ai-orchestration
+    context: ai-orchestration
+    docker:
+      dockerfile: dockerfile
+    
+
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/auth
+    context: auth
+    docker:
+      dockerfile: dockerfile
+    
+        
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/notification
+    context: notification
+    docker:
+      dockerfile: dockerfile
+      
+
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/agent
+    context: sandbox/agent
+    docker:
+      dockerfile: dockerfile
+
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/sync-agent
+    context: sandbox/sync-agent
+    docker:
+      dockerfile: dockerfile
+
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/router
+    context: sandbox/router
+    docker:
+      dockerfile: dockerfile
+
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/sandbox
+    context: sandbox/server
+    docker:
+      dockerfile: dockerfile
+
+  - image: 329599656829.dkr.ecr.ap-southeast-1.amazonaws.com/template
+    context: sandbox/template
+    docker:
+      dockerfile: dockerfile
+
+manifests:
+  rawYaml:
+    - k8s/ai-deployment.yml
+    - k8s/ai-service.yml
+    - k8s/auth-deployment.yml
+    - k8s/auth-service.yml
+    - k8s/sandbox-deployment.yml
+    - k8s/sandbox-service.yml
+    - k8s/ingress.yml
+    - k8s/router-deployment.yml
+    - k8s/router-service.yml
+    - k8s/rbac.yml
+    - k8s/secrets.yml
+    - k8s/notification-deployment.yml
+    - k8s/notification-service.yml
